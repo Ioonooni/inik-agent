@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
+
 from supabase_memory import get_supabase_client
 
 
 def normalize_username(username: str) -> str:
-    """Normalize username so each typed name maps to one stable user."""
     if not username:
         raise ValueError("username is required")
 
@@ -15,8 +15,25 @@ def normalize_username(username: str) -> str:
     return cleaned
 
 
+def normalize_email(email: str) -> str:
+    if not email:
+        raise ValueError("email is required")
+
+    cleaned = email.strip().lower()
+
+    if "@" not in cleaned or "." not in cleaned:
+        raise ValueError("invalid email")
+
+    return cleaned
+
+
+def build_username_from_email(email: str) -> str:
+    normalized_email = normalize_email(email)
+    base = normalized_email.split("@")[0]
+    return normalize_username(base)
+
+
 def get_user_by_username(username: str):
-    """Return exact user by username, or None if not found."""
     client = get_supabase_client()
     normalized = normalize_username(username)
 
@@ -29,15 +46,50 @@ def get_user_by_username(username: str):
         .execute()
     )
 
-    if result.data and len(result.data) > 0:
+    if result.data:
         return result.data[0]
 
     return None
 
 
-def create_blank_memory_for_user(user_id: str):
-    """Ensure every new user gets isolated blank memory."""
+def get_user_by_id(user_id: str):
     client = get_supabase_client()
+
+    result = (
+        client
+        .table("i_nik_users")
+        .select("*")
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
+    )
+
+    if result.data:
+        return result.data[0]
+
+    return None
+
+
+def memory_exists_for_user(user_id: str) -> bool:
+    client = get_supabase_client()
+
+    result = (
+        client
+        .table("i_nik_memory")
+        .select("user_id")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+
+    return bool(result.data)
+
+
+def create_blank_memory_for_user(user_id: str):
+    client = get_supabase_client()
+
+    if memory_exists_for_user(user_id):
+        return True
 
     blank_memory = {
         "user_id": user_id,
@@ -63,13 +115,138 @@ def create_blank_memory_for_user(user_id: str):
     }
 
     try:
-        client.table("i_nik_memory").upsert(blank_memory).execute()
-    except Exception as e:
-        print(f"[Auth] Could not create blank memory: {e}")
+        client.table("i_nik_memory").insert(blank_memory).execute()
+        return True
+    except Exception as error:
+        print(f"[Auth] Could not create blank memory: {error}")
+        return False
+
+
+def upsert_app_user(user_id: str, username: str):
+    """
+    Keep this compatible with the current i_nik_users schema.
+    Do not write email here unless the table has an email column.
+    """
+    client = get_supabase_client()
+    now = datetime.now(timezone.utc).isoformat()
+
+    existing = get_user_by_id(user_id)
+
+    if existing:
+        try:
+            (
+                client
+                .table("i_nik_users")
+                .update({"last_login": now})
+                .eq("id", user_id)
+                .execute()
+            )
+        except Exception as error:
+            print(f"[Auth] Could not update app user login time: {error}")
+
+        existing["last_login"] = now
+        return existing
+
+    payload = {
+        "id": user_id,
+        "username": username,
+        "created_at": now,
+        "last_login": now,
+    }
+
+    try:
+        result = (
+            client
+            .table("i_nik_users")
+            .insert(payload)
+            .execute()
+        )
+
+        if result.data:
+            return result.data[0]
+
+    except Exception as error:
+        print(f"[Auth] Could not insert app user: {error}")
+
+    return {
+        "id": user_id,
+        "username": username,
+        "created_at": now,
+        "last_login": now,
+    }
+
+
+def sign_up_with_email(email: str, password: str):
+    client = get_supabase_client()
+    normalized_email = normalize_email(email)
+
+    if not password or len(password) < 6:
+        raise ValueError("password must be at least 6 characters")
+
+    auth_result = client.auth.sign_up({
+        "email": normalized_email,
+        "password": password,
+    })
+
+    if not auth_result.user:
+        raise RuntimeError("Supabase Auth signup failed")
+
+    user_id = auth_result.user.id
+    username = build_username_from_email(normalized_email)
+
+    app_user = upsert_app_user(
+        user_id=user_id,
+        username=username
+    )
+
+    create_blank_memory_for_user(user_id)
+
+    return {
+        "id": user_id,
+        "username": username,
+        "email": normalized_email,
+        "auth_user": auth_result.user,
+        "session": auth_result.session,
+        "app_user": app_user,
+    }
+
+
+def login_with_email(email: str, password: str):
+    client = get_supabase_client()
+    normalized_email = normalize_email(email)
+
+    if not password:
+        raise ValueError("password is required")
+
+    auth_result = client.auth.sign_in_with_password({
+        "email": normalized_email,
+        "password": password,
+    })
+
+    if not auth_result.user:
+        raise RuntimeError("Supabase Auth login failed")
+
+    user_id = auth_result.user.id
+    username = build_username_from_email(normalized_email)
+
+    app_user = upsert_app_user(
+        user_id=user_id,
+        username=username
+    )
+
+    create_blank_memory_for_user(user_id)
+
+    return {
+        "id": user_id,
+        "username": username,
+        "email": normalized_email,
+        "auth_user": auth_result.user,
+        "session": auth_result.session,
+        "app_user": app_user,
+    }
 
 
 def create_user(username: str):
-    """Create a new user and return the exact inserted user."""
     client = get_supabase_client()
     normalized = normalize_username(username)
     now = datetime.now(timezone.utc).isoformat()
@@ -88,32 +265,31 @@ def create_user(username: str):
             .execute()
         )
 
-        if result.data and len(result.data) > 0:
+        if result.data:
             user = result.data[0]
             create_blank_memory_for_user(user["id"])
             return user
 
-    except Exception as e:
-        print(f"[Auth] Create user failed, will refetch exact username: {e}")
+    except Exception as error:
+        print(f"[Auth] Demo user insert failed/refetching: {error}")
 
-    existing = get_user_by_username(normalized)
+        existing = get_user_by_username(normalized)
 
-    if existing:
-        return existing
+        if existing:
+            create_blank_memory_for_user(existing["id"])
+            return existing
 
     raise RuntimeError(f"Could not create or find user: {normalized}")
 
 
 def login_or_create_user(username: str):
-    """Login exact username. If not found, create a brand-new user."""
     client = get_supabase_client()
     normalized = normalize_username(username)
+    now = datetime.now(timezone.utc).isoformat()
 
     existing = get_user_by_username(normalized)
 
     if existing:
-        now = datetime.now(timezone.utc).isoformat()
-
         try:
             (
                 client
@@ -123,14 +299,14 @@ def login_or_create_user(username: str):
                 .execute()
             )
             existing["last_login"] = now
-        except Exception as e:
-            print(f"[Auth] Error updating login time: {e}")
+        except Exception as error:
+            print(f"[Auth] Demo user login update failed: {error}")
 
+        create_blank_memory_for_user(existing["id"])
         return existing
 
     return create_user(normalized)
 
 
 if __name__ == "__main__":
-    test_user = login_or_create_user("test_user")
-    print(test_user)
+    print("auth_manager ready")

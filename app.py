@@ -5,6 +5,7 @@ from behavior import get_stage, get_stage_description
 from character import CHARACTER_BIBLE
 from memory import build_chat_history
 from rag_prompt import build_safe_rag_context
+from rag_memory import save_memory_note
 from facts import extract_facts, answer_from_facts
 from rewards import check_reward
 from relationship import (
@@ -603,6 +604,15 @@ def main_app():
             "content": user_message
         })
 
+        try:
+            save_memory_note(
+                user_id=user_id,
+                content=user_message,
+                memory_type="user_message"
+            )
+        except Exception as error:
+            print("[RAG SAVE ERROR]", error)
+
         st.session_state.intimacy_score = min(
             100,
             st.session_state.intimacy_score + 10
@@ -647,6 +657,13 @@ def main_app():
             st.session_state.messages,
             limit=10
         )
+
+        rag_context = build_safe_rag_context(
+            user_id=user_id,
+            user_message=user_message,
+            limit=5
+        )
+
 
         plan = build_plan(
             user_message,
@@ -726,11 +743,6 @@ def main_app():
                 reply = direct_reply
             else:
 
-                rag_context = build_safe_rag_context(
-                    user_id=user_id,
-                    user_message=user_message,
-                    limit=5
-                )
 
                 prompt = f"""
 {CHARACTER_BIBLE}
@@ -783,14 +795,17 @@ def main_app():
                         response = model.generate_content(prompt)
                         reply = response.text
                 except Exception as e:
-                    reply = build_fallback_reply(
-                        str(e),
-                        user_message,
-                        stage,
-                        response_mode,
-                        st.session_state.user_facts,
-                        st.session_state.relationship_state
-                    )
+                    if rag_context and rag_context != "ไม่มี RAG memory ที่เกี่ยวข้อง":
+                        reply = f"เท่าที่ฉันจำได้ เธอเคยพูดประมาณนี้:\n{rag_context}"
+                    else:
+                        reply = build_fallback_reply(
+                            str(e),
+                            user_message,
+                            stage,
+                            response_mode,
+                            st.session_state.user_facts,
+                            st.session_state.relationship_state
+                        )
 
         st.session_state.messages.append({
             "role": "assistant",
