@@ -2,6 +2,7 @@ from persistent_memory import (
     load_memory as load_memory_from_json,
     save_memory as save_memory_to_json
 )
+
 from supabase_memory import (
     get_supabase_client,
     row_to_memory,
@@ -9,6 +10,9 @@ from supabase_memory import (
     TABLE_NAME,
     DEMO_USER_ID
 )
+
+from user_profile import create_user_profile
+from relationship import create_relationship_state
 
 
 LAST_MEMORY_STATUS = {
@@ -23,14 +27,26 @@ def get_memory_status():
     return LAST_MEMORY_STATUS
 
 
+def create_blank_memory():
+    """Create isolated blank memory for a brand-new user."""
+    return {
+        "user_facts": {},
+        "user_profile": create_user_profile(),
+        "inventory": [],
+        "intimacy_score": 0,
+        "points": 0,
+        "relationship_state": create_relationship_state()
+    }
+
+
 def load_memory(user_id=DEMO_USER_ID):
     """
     Main memory loader for i nik V2.
 
-    Priority:
-    1. Try Supabase
-    2. If no Supabase row exists, migrate local JSON memory to Supabase
-    3. If Supabase fails, fallback to JSON
+    Rule:
+    - Existing Supabase row = load that user's memory.
+    - New Supabase user with no memory row = create blank isolated memory.
+    - JSON is fallback only for demo_user / emergency local fallback.
     """
 
     try:
@@ -52,32 +68,35 @@ def load_memory(user_id=DEMO_USER_ID):
             LAST_MEMORY_STATUS["last_error"] = None
             return row_to_memory(rows[0])
 
-        local_memory = load_memory_from_json()
+        blank_memory = create_blank_memory()
 
-        migrated = save_memory_to_supabase(
-            local_memory["user_facts"],
-            local_memory["user_profile"],
-            local_memory["inventory"],
-            local_memory["intimacy_score"],
-            local_memory["points"],
-            local_memory["relationship_state"],
+        created = save_memory_to_supabase(
+            blank_memory["user_facts"],
+            blank_memory["user_profile"],
+            blank_memory["inventory"],
+            blank_memory["intimacy_score"],
+            blank_memory["points"],
+            blank_memory["relationship_state"],
             user_id=user_id
         )
 
-        LAST_MEMORY_STATUS["source"] = "json_migrated_to_supabase" if migrated else "json_fallback"
+        LAST_MEMORY_STATUS["source"] = "supabase_blank_created" if created else "blank_memory_local_only"
         LAST_MEMORY_STATUS["supabase_load"] = False
-        LAST_MEMORY_STATUS["supabase_save"] = migrated
+        LAST_MEMORY_STATUS["supabase_save"] = created
+        LAST_MEMORY_STATUS["last_error"] = None if created else "No Supabase row existed and blank memory save failed."
 
-        if not migrated:
-            LAST_MEMORY_STATUS["last_error"] = "Supabase row did not exist, and migration save failed."
-
-        return local_memory
+        return blank_memory
 
     except Exception as error:
-        LAST_MEMORY_STATUS["source"] = "json_fallback"
         LAST_MEMORY_STATUS["supabase_load"] = False
         LAST_MEMORY_STATUS["last_error"] = str(error)
-        return load_memory_from_json()
+
+        if user_id == DEMO_USER_ID:
+            LAST_MEMORY_STATUS["source"] = "json_fallback_demo_user"
+            return load_memory_from_json()
+
+        LAST_MEMORY_STATUS["source"] = "blank_memory_fallback_non_demo_user"
+        return create_blank_memory()
 
 
 def save_memory(
@@ -92,19 +111,20 @@ def save_memory(
     """
     Main memory saver for i nik V2.
 
-    Saves to:
-    1. JSON backup
-    2. Supabase primary database
+    Rule:
+    - Supabase is primary.
+    - JSON backup is written only for demo_user to prevent cross-user leakage.
     """
 
-    save_memory_to_json(
-        user_facts,
-        user_profile,
-        inventory,
-        intimacy_score,
-        points,
-        relationship_state
-    )
+    if user_id == DEMO_USER_ID:
+        save_memory_to_json(
+            user_facts,
+            user_profile,
+            inventory,
+            intimacy_score,
+            points,
+            relationship_state
+        )
 
     supabase_saved = save_memory_to_supabase(
         user_facts,
@@ -119,10 +139,10 @@ def save_memory(
     LAST_MEMORY_STATUS["supabase_save"] = supabase_saved
 
     if supabase_saved:
-        LAST_MEMORY_STATUS["source"] = "supabase_and_json_backup"
+        LAST_MEMORY_STATUS["source"] = "supabase_primary"
         LAST_MEMORY_STATUS["last_error"] = None
     else:
-        LAST_MEMORY_STATUS["source"] = "json_backup_only"
-        LAST_MEMORY_STATUS["last_error"] = "Supabase save returned False. Check Streamlit secrets, API key type, RLS, or table permissions."
+        LAST_MEMORY_STATUS["source"] = "json_demo_backup_only" if user_id == DEMO_USER_ID else "supabase_save_failed_non_demo_user"
+        LAST_MEMORY_STATUS["last_error"] = "Supabase save returned False. Check secrets, API key type, RLS, or table permissions."
 
     return supabase_saved
