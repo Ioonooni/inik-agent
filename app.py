@@ -72,26 +72,23 @@ def show_login():
     )
 
     if auth_mode in ["Login", "Sign up"]:
-        email = st.text_input(
-            "Email",
-            placeholder="you@example.com",
-            key="auth_email"
-        )
+        with st.form(key="email_auth_form"):
+            email = st.text_input(
+                "Email",
+                placeholder="you@example.com",
+            )
+            password = st.text_input(
+                "Password",
+                type="password",
+                placeholder="อย่างน้อย 6 ตัวอักษร",
+            )
+            submitted = st.form_submit_button(
+                auth_mode,
+                type="primary",
+                use_container_width=True,
+            )
 
-        password = st.text_input(
-            "Password",
-            type="password",
-            placeholder="อย่างน้อย 6 ตัวอักษร",
-            key="auth_password"
-        )
-
-        clicked = st.button(
-            auth_mode,
-            type="primary",
-            use_container_width=True
-        )
-
-        if clicked:
+        if submitted:
             try:
                 if auth_mode == "Login":
                     from auth_manager import login_with_email
@@ -111,19 +108,18 @@ def show_login():
                 st.error(f"{auth_mode} ไม่สำเร็จ: {e}")
 
     else:
-        username = st.text_input(
-            "ชื่อผู้ใช้",
-            placeholder="เช่น aiuun, nik_lover",
-            key="login_username"
-        )
+        with st.form(key="username_demo_form"):
+            username = st.text_input(
+                "ชื่อผู้ใช้",
+                placeholder="เช่น aiuun, nik_lover",
+            )
+            submitted = st.form_submit_button(
+                "เข้าสู่ระบบแบบ demo",
+                type="primary",
+                use_container_width=True,
+            )
 
-        login_clicked = st.button(
-            "เข้าสู่ระบบแบบ demo",
-            type="primary",
-            use_container_width=True
-        )
-
-        if login_clicked:
+        if submitted:
             if not username or len(username.strip()) < 2:
                 st.error("กรุณาใส่ชื่ออย่างน้อย 2 ตัวอักษร")
                 return
