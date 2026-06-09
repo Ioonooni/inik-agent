@@ -137,16 +137,17 @@ def format_memory_context(memories: List[Dict[str, Any]]) -> str:
     if not memories:
         return "ไม่มี RAG memory ที่เกี่ยวข้อง"
 
-    lines = []
+    lines = [
+        m.get("content", "").strip()
+        for m in memories
+        if (m.get("content") or "").strip()
+    ]
 
-    for memory in memories:
-        content = memory.get("content", "")
-        memory_type = memory.get("memory_type", "memory")
-        created_at = memory.get("created_at", "")
+    if not lines:
+        return "ไม่มี RAG memory ที่เกี่ยวข้อง"
 
-        lines.append(f"- [{memory_type}] {content} ({created_at})")
-
-    return "\n".join(lines)
+    quoted = " / ".join(f'"{line[:200]}"' for line in lines)
+    return f"เธอเคยพูดว่า: {quoted}"
 
 
 if __name__ == "__main__":
