@@ -37,6 +37,7 @@ from redemption import (
     get_latest_redemption
 )
 from auth_manager import login_or_create_user
+from agent_tools import list_available_tools, run_tool
 
 
 st.set_page_config(
@@ -54,7 +55,6 @@ USE_FAKE_AI = False
 
 
 def show_login():
-    """Show login page before entering chat."""
     st.title("🧚 i nik")
     st.caption("AI Character Loyalty Prototype")
 
@@ -98,7 +98,6 @@ def show_login():
 
 
 def clear_runtime_state_for_user_switch():
-    """Clear user-specific runtime state to prevent data leaking between users."""
     keys_to_clear = [
         "persistent_memory",
         "messages",
@@ -112,6 +111,7 @@ def clear_runtime_state_for_user_switch():
         "current_response_mode",
         "last_event_log_result",
         "last_redemption_result",
+        "last_agent_tool_result",
     ]
 
     for key in keys_to_clear:
@@ -120,7 +120,6 @@ def clear_runtime_state_for_user_switch():
 
 
 def init_user_session():
-    """Initialize session state for the logged-in user without leaking old user data."""
     user_id = st.session_state.get("user_id")
 
     if not user_id:
@@ -197,9 +196,11 @@ def init_user_session():
     if "last_redemption_result" not in st.session_state:
         st.session_state.last_redemption_result = None
 
+    if "last_agent_tool_result" not in st.session_state:
+        st.session_state.last_agent_tool_result = None
+
 
 def persist_current_state():
-    """Save current state to memory for the logged-in user."""
     user_id = st.session_state.get("user_id")
 
     if not user_id:
@@ -227,14 +228,104 @@ def persist_current_state():
 
 
 def logout_user():
-    """Logout safely and remove all session data."""
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.rerun()
 
 
+def render_agent_tools_panel():
+    st.divider()
+    st.subheader("🛠 Agent Tools")
+
+    tools = list_available_tools()
+    tool_names = [tool["name"] for tool in tools]
+
+    selected_tool = st.selectbox(
+        "Select Tool",
+        tool_names,
+        key="agent_tool_select"
+    )
+
+    with st.expander("Tool Description"):
+        selected_info = next(
+            (tool for tool in tools if tool["name"] == selected_tool),
+            None
+        )
+
+        if selected_info:
+            st.write(selected_info["description"])
+
+    arguments = {}
+
+    if selected_tool == "check_memory":
+        memory_key = st.text_input(
+            "Memory key optional",
+            placeholder="เช่น name, likes หรือปล่อยว่าง",
+            key="tool_memory_key"
+        )
+        arguments["key"] = memory_key.strip() if memory_key.strip() else None
+
+    elif selected_tool == "grant_points":
+        amount = st.number_input(
+            "Points amount",
+            min_value=1,
+            max_value=100,
+            value=5,
+            step=1,
+            key="tool_points_amount"
+        )
+        reason = st.text_input(
+            "Reason",
+            value="manual_tool_test",
+            key="tool_points_reason"
+        )
+        arguments["amount"] = int(amount)
+        arguments["reason"] = reason
+
+    elif selected_tool == "update_relationship":
+        user_message = st.text_area(
+            "Test message",
+            value="ฉันชอบ i nik",
+            key="tool_relationship_message"
+        )
+        arguments["user_message"] = user_message
+
+    elif selected_tool == "log_agent_event":
+        event_type = st.text_input(
+            "Event type",
+            value="manual_agent_tool_test",
+            key="tool_event_type"
+        )
+        arguments["event_type"] = event_type
+        arguments["extra"] = {
+            "source": "agent_tools_panel",
+            "username": st.session_state.get("username"),
+            "user_id": st.session_state.get("user_id"),
+        }
+
+    if st.button("Run Tool", key="run_agent_tool", use_container_width=True):
+        result = run_tool(
+            selected_tool,
+            st.session_state,
+            arguments
+        )
+
+        st.session_state.last_agent_tool_result = result
+
+        if selected_tool in ["grant_points", "update_relationship"]:
+            persist_current_state()
+
+        if selected_tool == "log_agent_event":
+            st.session_state.last_event_log_result = result.get("result")
+
+        st.rerun()
+
+    if st.session_state.get("last_agent_tool_result"):
+        st.write("Last Tool Result")
+        st.json(st.session_state.last_agent_tool_result)
+
+
 def main_app():
-    """Main chat interface after login."""
     user_id = st.session_state.get("user_id")
     username = st.session_state.get("username", "User")
 
@@ -445,6 +536,8 @@ def main_app():
                 icon = "✅" if check["status"] else "❌"
                 st.write(f"{icon} {check['name']}: {check['detail']}")
 
+        render_agent_tools_panel()
+
     st.title("🧚 i nik ◧")
     st.caption(f"สวัสดี, {username}! i nik จำคุณได้...")
     st.write("### Talk to i nik")
@@ -539,6 +632,7 @@ def main_app():
 - ถ้าข้อมูลที่จำได้มี name ให้ใช้ชื่อนั้นเมื่อตอบคำถามเกี่ยวกับชื่อผู้ใช้
 - ห้ามตอบว่าไม่รู้ชื่อ ถ้าในข้อมูลที่จำได้มี name อยู่แล้ว
 - ถ้าผู้ใช้ถามว่า "ฉันชื่ออะไร" ให้ตอบจากข้อมูลที่จำได้โดยตรง
+- ถ้าผู้ใช้ถามว่า "ฉันชอบอะไร" ให้ตอบจากข้อมูลที่จำได้โดยตรง
 - ใช้ความจำอย่างเป็นธรรมชาติ ไม่ต้องประกาศว่าอ่านจากระบบ
 
 ผู้ใช้พูดว่า:
@@ -610,3 +704,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
