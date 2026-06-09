@@ -1,0 +1,22 @@
+{
+  "user_facts": {},
+  "user_profile": {
+    "recent_mood": "neutral",
+    "total_visits": 2,
+    "total_messages": 8,
+    "memorable_events": [],
+    "recurring_topics": [],
+    "conversation_style": "unknown",
+    "last_interaction_date": "2026-06-09T10:27:12"
+  },
+  "inventory": [
+    "เรื่องเล่าสั้น ๆ จากหลังร้าน"
+  ],
+  "intimacy_score": 80,
+  "points": 8,
+  "relationship_state": {
+    "trust": 0,
+    "curiosity": 0,
+    "familiarity": 8
+  }
+}

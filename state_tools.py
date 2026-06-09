@@ -1,7 +1,7 @@
 import json
 
 from relationship import create_relationship_state
-from profile import create_user_profile
+from user_profile import create_user_profile
 from memory_gateway import save_memory
 
 
