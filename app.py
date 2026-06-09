@@ -4,6 +4,7 @@ import google.generativeai as genai
 from behavior import get_stage, get_stage_description
 from character import CHARACTER_BIBLE
 from memory import build_chat_history
+from rag_prompt import build_safe_rag_context
 from facts import extract_facts, answer_from_facts
 from rewards import check_reward
 from relationship import (
@@ -724,6 +725,13 @@ def main_app():
             if direct_reply:
                 reply = direct_reply
             else:
+
+                rag_context = build_safe_rag_context(
+                    user_id=user_id,
+                    user_message=user_message,
+                    limit=5
+                )
+
                 prompt = f"""
 {CHARACTER_BIBLE}
 
@@ -744,6 +752,9 @@ def main_app():
 
 ข้อมูลที่จำได้:
 {st.session_state.user_facts}
+
+ความทรงจำเพิ่มเติมจาก RAG:
+{rag_context}
 
 กฎการใช้ความจำ:
 - ถ้าข้อมูลที่จำได้มี name ให้ใช้ชื่อนั้นเมื่อตอบคำถามเกี่ยวกับชื่อผู้ใช้
