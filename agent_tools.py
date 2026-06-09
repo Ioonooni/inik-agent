@@ -20,27 +20,21 @@ def _safe_get(session_state: Any, key: str, default: Any = None) -> Any:
 
 def get_user_state(session_state: Any) -> Dict[str, Any]:
     intimacy_score = _safe_get(session_state, "intimacy_score", 0)
-    points = _safe_get(session_state, "points", 0)
-    relationship_state = _safe_get(session_state, "relationship_state", {})
-    user_facts = _safe_get(session_state, "user_facts", {})
-    inventory = _safe_get(session_state, "inventory", [])
-    username = _safe_get(session_state, "username", "unknown")
-    user_id = _safe_get(session_state, "user_id", "unknown_user")
 
     return {
         "ok": True,
         "tool": "get_user_state",
         "timestamp": _now_iso(),
-        "user_id": user_id,
-        "username": username,
+        "user_id": _safe_get(session_state, "user_id", "unknown_user"),
+        "username": _safe_get(session_state, "username", "unknown"),
+        "email": _safe_get(session_state, "email", None),
+        "auth_mode": _safe_get(session_state, "auth_mode", "unknown"),
         "intimacy_score": intimacy_score,
         "stage": get_stage(intimacy_score),
-        "points": points,
-        "relationship_state": relationship_state,
-        "memory_fact_count": len(user_facts),
-        "inventory_count": len(inventory),
-        "known_facts": user_facts,
-        "inventory": inventory,
+        "points": _safe_get(session_state, "points", 0),
+        "relationship_state": _safe_get(session_state, "relationship_state", {}),
+        "memory_fact_count": len(_safe_get(session_state, "user_facts", {})),
+        "inventory_count": len(_safe_get(session_state, "inventory", [])),
     }
 
 
@@ -66,6 +60,45 @@ def check_memory(session_state: Any, key: Optional[str] = None) -> Dict[str, Any
     }
 
 
+def get_inventory(session_state: Any) -> Dict[str, Any]:
+    inventory = _safe_get(session_state, "inventory", [])
+
+    return {
+        "ok": True,
+        "tool": "get_inventory",
+        "timestamp": _now_iso(),
+        "inventory": inventory,
+        "inventory_count": len(inventory),
+    }
+
+
+def get_visit_count(session_state: Any) -> Dict[str, Any]:
+    user_profile = _safe_get(session_state, "user_profile", {})
+
+    return {
+        "ok": True,
+        "tool": "get_visit_count",
+        "timestamp": _now_iso(),
+        "total_visits": user_profile.get("total_visits", 0),
+        "total_messages": user_profile.get("total_messages", 0),
+        "last_interaction_date": user_profile.get("last_interaction_date"),
+    }
+
+
+def get_relationship_state(session_state: Any) -> Dict[str, Any]:
+    relationship_state = _safe_get(session_state, "relationship_state", {})
+
+    return {
+        "ok": True,
+        "tool": "get_relationship_state",
+        "timestamp": _now_iso(),
+        "relationship_state": relationship_state,
+        "trust": relationship_state.get("trust", 0),
+        "familiarity": relationship_state.get("familiarity", 0),
+        "curiosity": relationship_state.get("curiosity", 0),
+    }
+
+
 def update_relationship(session_state: Any, user_message: str) -> Dict[str, Any]:
     try:
         current_state = _safe_get(session_state, "relationship_state", {})
@@ -88,7 +121,11 @@ def update_relationship(session_state: Any, user_message: str) -> Dict[str, Any]
         }
 
 
-def grant_points(session_state: Any, amount: int, reason: str = "tool_grant") -> Dict[str, Any]:
+def grant_points(
+    session_state: Any,
+    amount: int,
+    reason: str = "tool_grant"
+) -> Dict[str, Any]:
     try:
         if amount <= 0:
             return {
@@ -163,11 +200,23 @@ def list_available_tools() -> List[Dict[str, str]]:
     return [
         {
             "name": "get_user_state",
-            "description": "Read current user state, stage, points, memory facts, and inventory.",
+            "description": "Read current user state, auth mode, stage, points, and memory count.",
         },
         {
             "name": "check_memory",
             "description": "Read all remembered facts or one specific memory key.",
+        },
+        {
+            "name": "get_inventory",
+            "description": "Read user inventory and item count.",
+        },
+        {
+            "name": "get_visit_count",
+            "description": "Read total visits, total messages, and last interaction date.",
+        },
+        {
+            "name": "get_relationship_state",
+            "description": "Read trust, familiarity, curiosity, and relationship state.",
         },
         {
             "name": "update_relationship",
@@ -175,7 +224,7 @@ def list_available_tools() -> List[Dict[str, str]]:
         },
         {
             "name": "grant_points",
-            "description": "Grant points and optionally trigger reward logic.",
+            "description": "Grant points and trigger reward logic if eligible.",
         },
         {
             "name": "log_agent_event",
@@ -197,6 +246,9 @@ def run_tool(
             session_state,
             key=arguments.get("key")
         ),
+        "get_inventory": lambda: get_inventory(session_state),
+        "get_visit_count": lambda: get_visit_count(session_state),
+        "get_relationship_state": lambda: get_relationship_state(session_state),
         "update_relationship": lambda: update_relationship(
             session_state,
             user_message=arguments.get("user_message", "")
@@ -226,4 +278,5 @@ def run_tool(
 
 
 if __name__ == "__main__":
-    print(list_available_tools())
+    for tool in list_available_tools():
+        print(f"{tool['name']}: {tool['description']}")
