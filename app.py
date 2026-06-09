@@ -37,6 +37,7 @@ from redemption import (
     get_latest_redemption
 )
 from auth_manager import login_or_create_user
+from planner import build_plan, explain_plan
 from agent_tools import list_available_tools, run_tool
 
 
@@ -60,41 +61,87 @@ def show_login():
 
     st.write("---")
     st.subheader("เข้าสู่ระบบ")
-    st.write("ใส่ชื่อของคุณเพื่อเริ่มคุยกับ i nik")
 
-    username = st.text_input(
-        "ชื่อผู้ใช้",
-        placeholder="เช่น aiuun, nik_lover, etc.",
-        key="login_username"
+    auth_mode = st.radio(
+        "เลือกโหมด",
+        ["Login", "Sign up", "Username demo"],
+        horizontal=True
     )
 
-    login_clicked = st.button(
-        "เข้าสู่ระบบ",
-        type="primary",
-        use_container_width=True
-    )
+    if auth_mode in ["Login", "Sign up"]:
+        email = st.text_input(
+            "Email",
+            placeholder="you@example.com",
+            key="auth_email"
+        )
 
-    if login_clicked:
-        if not username or len(username.strip()) < 2:
-            st.error("กรุณาใส่ชื่ออย่างน้อย 2 ตัวอักษร")
-            return
+        password = st.text_input(
+            "Password",
+            type="password",
+            placeholder="อย่างน้อย 6 ตัวอักษร",
+            key="auth_password"
+        )
 
-        username = username.strip().lower()
+        clicked = st.button(
+            auth_mode,
+            type="primary",
+            use_container_width=True
+        )
 
-        try:
-            user = login_or_create_user(username)
+        if clicked:
+            try:
+                if auth_mode == "Login":
+                    from auth_manager import login_with_email
+                    user = login_with_email(email, password)
+                else:
+                    from auth_manager import sign_up_with_email
+                    user = sign_up_with_email(email, password)
 
-            if not user or "id" not in user or "username" not in user:
-                st.error("ข้อมูลผู้ใช้ไม่สมบูรณ์จากระบบ login")
+                st.session_state["current_user"] = user
+                st.session_state["user_id"] = user["id"]
+                st.session_state["username"] = user["username"]
+                st.session_state["email"] = user.get("email")
+                st.session_state["auth_mode"] = "supabase_auth"
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"{auth_mode} ไม่สำเร็จ: {e}")
+
+    else:
+        username = st.text_input(
+            "ชื่อผู้ใช้",
+            placeholder="เช่น aiuun, nik_lover",
+            key="login_username"
+        )
+
+        login_clicked = st.button(
+            "เข้าสู่ระบบแบบ demo",
+            type="primary",
+            use_container_width=True
+        )
+
+        if login_clicked:
+            if not username or len(username.strip()) < 2:
+                st.error("กรุณาใส่ชื่ออย่างน้อย 2 ตัวอักษร")
                 return
 
-            st.session_state["current_user"] = user
-            st.session_state["user_id"] = user["id"]
-            st.session_state["username"] = user["username"]
-            st.rerun()
+            username = username.strip().lower()
 
-        except Exception as e:
-            st.error(f"เข้าสู่ระบบไม่สำเร็จ: {e}")
+            try:
+                user = login_or_create_user(username)
+
+                if not user or "id" not in user or "username" not in user:
+                    st.error("ข้อมูลผู้ใช้ไม่สมบูรณ์จากระบบ login")
+                    return
+
+                st.session_state["current_user"] = user
+                st.session_state["user_id"] = user["id"]
+                st.session_state["username"] = user["username"]
+                st.session_state["auth_mode"] = "username_demo"
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"เข้าสู่ระบบไม่สำเร็จ: {e}")
 
 
 def clear_runtime_state_for_user_switch():
@@ -236,6 +283,7 @@ def logout_user():
 def render_agent_tools_panel():
     st.divider()
     st.subheader("🛠 Agent Tools")
+    st.caption("Manual tool testing panel")
 
     tools = list_available_tools()
     tool_names = [tool["name"] for tool in tools]
@@ -599,15 +647,84 @@ def main_app():
             limit=10
         )
 
-        direct_reply = answer_from_facts(
+        plan = build_plan(
             user_message,
-            st.session_state.user_facts
+            st.session_state
         )
 
-        if direct_reply:
-            reply = direct_reply
+        st.session_state.last_agent_plan = plan
+
+        planner_result = None
+
+        if plan and plan.get("tool"):
+            planner_result = run_tool(
+                plan["tool"],
+                st.session_state,
+                plan.get("arguments", {})
+            )
+
+        if planner_result and planner_result.get("ok"):
+
+            if planner_result["tool"] == "check_memory":
+                facts = planner_result.get("facts", {})
+                value = planner_result.get("value")
+                key = planner_result.get("key")
+
+                if key and value:
+                    if key == "name":
+                        reply = f"เธอชื่อ {value} ไง"
+                    elif key == "likes":
+                        reply = f"เท่าที่ฉันจำได้ เธอชอบ {value}"
+                    else:
+                        reply = f"เท่าที่ฉันจำได้ {key} คือ {value}"
+                elif facts:
+                    reply = f"เท่าที่ฉันจำได้เกี่ยวกับเธอ: {facts}"
+                else:
+                    reply = "ฉันยังจำข้อมูลนี้ไม่ได้เลย"
+
+            elif planner_result["tool"] == "get_user_state":
+                reply = (
+                    f"ตอนนี้เธออยู่ Stage "
+                    f"{planner_result.get('stage')} "
+                    f"และมี {planner_result.get('points')} points"
+                )
+
+            elif planner_result["tool"] == "get_inventory":
+                inventory = planner_result.get("inventory", [])
+
+                if inventory:
+                    reply = f"ของที่เธอมีตอนนี้คือ {inventory}"
+                else:
+                    reply = "ตอนนี้เธอยังไม่มีของใน inventory"
+
+            elif planner_result["tool"] == "get_relationship_state":
+                reply = (
+                    f"สถานะตอนนี้ trust={planner_result.get('trust')}, "
+                    f"familiarity={planner_result.get('familiarity')}, "
+                    f"curiosity={planner_result.get('curiosity')}"
+                )
+
+            elif planner_result["tool"] == "get_visit_count":
+                reply = (
+                    f"เธอแวะมาทั้งหมด "
+                    f"{planner_result.get('total_visits')} ครั้ง "
+                    f"และส่งข้อความทั้งหมด "
+                    f"{planner_result.get('total_messages')} ข้อความ"
+                )
+
+            else:
+                reply = str(planner_result)
+
         else:
-            prompt = f"""
+            direct_reply = answer_from_facts(
+                user_message,
+                st.session_state.user_facts
+            )
+
+            if direct_reply:
+                reply = direct_reply
+            else:
+                prompt = f"""
 {CHARACTER_BIBLE}
 
 กฎบุคลิกตามระดับความสนิท:
@@ -639,30 +756,30 @@ def main_app():
 {user_message}
 """
 
-            try:
-                if USE_FAKE_AI or use_dev_test_mode:
-                    analytics = calculate_analytics(st.session_state)
+                try:
+                    if USE_FAKE_AI or use_dev_test_mode:
+                        analytics = calculate_analytics(st.session_state)
 
-                    reply = generate_fake_reply(
+                        reply = generate_fake_reply(
+                            user_message,
+                            stage,
+                            response_mode,
+                            st.session_state.user_facts,
+                            st.session_state.relationship_state,
+                            analytics
+                        )
+                    else:
+                        response = model.generate_content(prompt)
+                        reply = response.text
+                except Exception as e:
+                    reply = build_fallback_reply(
+                        str(e),
                         user_message,
                         stage,
                         response_mode,
                         st.session_state.user_facts,
-                        st.session_state.relationship_state,
-                        analytics
+                        st.session_state.relationship_state
                     )
-                else:
-                    response = model.generate_content(prompt)
-                    reply = response.text
-            except Exception as e:
-                reply = build_fallback_reply(
-                    str(e),
-                    user_message,
-                    stage,
-                    response_mode,
-                    st.session_state.user_facts,
-                    st.session_state.relationship_state
-                )
 
         st.session_state.messages.append({
             "role": "assistant",
@@ -704,4 +821,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
