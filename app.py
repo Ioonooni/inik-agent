@@ -6,6 +6,7 @@ from character import CHARACTER_BIBLE
 from memory import build_chat_history
 from rag_prompt import build_safe_rag_context
 from rag_memory import save_memory_note
+from rag_answer import build_natural_rag_reply
 from facts import extract_facts, answer_from_facts
 from rewards import check_reward
 from relationship import (
@@ -68,30 +69,43 @@ def show_login():
     auth_mode = st.radio(
         "เลือกโหมด",
         ["Login", "Sign up", "Username demo"],
-        horizontal=True
+        horizontal=True,
+        key="auth_mode_choice"
     )
 
     if auth_mode in ["Login", "Sign up"]:
-        email = st.text_input(
-            "Email",
-            placeholder="you@example.com",
-            key="auth_email"
-        )
+        with st.form("email_auth_form", clear_on_submit=False):
+            email = st.text_input(
+                "Email",
+                placeholder="you@example.com",
+                key="auth_email"
+            )
 
-        password = st.text_input(
-            "Password",
-            type="password",
-            placeholder="อย่างน้อย 6 ตัวอักษร",
-            key="auth_password"
-        )
+            password = st.text_input(
+                "Password",
+                type="password",
+                placeholder="อย่างน้อย 6 ตัวอักษร",
+                key="auth_password"
+            )
 
-        clicked = st.button(
-            auth_mode,
-            type="primary",
-            use_container_width=True
-        )
+            submitted = st.form_submit_button(
+                auth_mode,
+                type="primary",
+                use_container_width=True
+            )
 
-        if clicked:
+        if submitted:
+            email = (email or st.session_state.get("auth_email", "")).strip()
+            password = password or st.session_state.get("auth_password", "")
+
+            if not email:
+                st.error("กรุณาใส่อีเมล")
+                return
+
+            if not password:
+                st.error("กรุณาใส่รหัสผ่าน")
+                return
+
             try:
                 if auth_mode == "Login":
                     from auth_manager import login_with_email
@@ -111,24 +125,27 @@ def show_login():
                 st.error(f"{auth_mode} ไม่สำเร็จ: {e}")
 
     else:
-        username = st.text_input(
-            "ชื่อผู้ใช้",
-            placeholder="เช่น aiuun, nik_lover",
-            key="login_username"
-        )
+        with st.form("username_demo_form", clear_on_submit=False):
+            username = st.text_input(
+                "ชื่อผู้ใช้",
+                placeholder="เช่น aiuun, nik_lover",
+                key="login_username"
+            )
 
-        login_clicked = st.button(
-            "เข้าสู่ระบบแบบ demo",
-            type="primary",
-            use_container_width=True
-        )
+            submitted = st.form_submit_button(
+                "เข้าสู่ระบบแบบ demo",
+                type="primary",
+                use_container_width=True
+            )
 
-        if login_clicked:
-            if not username or len(username.strip()) < 2:
+        if submitted:
+            username = (
+                username or st.session_state.get("login_username", "")
+            ).strip().lower()
+
+            if not username or len(username) < 2:
                 st.error("กรุณาใส่ชื่ออย่างน้อย 2 ตัวอักษร")
                 return
-
-            username = username.strip().lower()
 
             try:
                 user = login_or_create_user(username)
@@ -145,7 +162,6 @@ def show_login():
 
             except Exception as e:
                 st.error(f"เข้าสู่ระบบไม่สำเร็จ: {e}")
-
 
 def clear_runtime_state_for_user_switch():
     keys_to_clear = [
@@ -773,8 +789,13 @@ def main_app():
                         response = model.generate_content(prompt)
                         reply = response.text
                 except Exception as e:
-                    if rag_context and rag_context != "ไม่มี RAG memory ที่เกี่ยวข้อง":
-                        reply = f"เท่าที่ฉันจำได้ เธอเคยพูดประมาณนี้:\n{rag_context}"
+                    natural_rag_reply = build_natural_rag_reply(
+                        user_message,
+                        rag_context
+                    )
+
+                    if natural_rag_reply:
+                        reply = natural_rag_reply
                     else:
                         reply = build_fallback_reply(
                             str(e),
