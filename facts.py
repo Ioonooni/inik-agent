@@ -35,16 +35,29 @@ def extract_facts(user_message, facts):
 
     for pattern in name_patterns:
         match = re.search(pattern, text)
-        if match:
-            name = clean_value(match.group(1))
 
-            blocked_words = [
-                "อะไร", "ไร", "ใคร", "ไหม", "มั้ย", "หรือเปล่า",
-                "ของฉัน", "ของเรา"
-            ]
+        if not match:
+            continue
 
-            if name and len(name) <= 30 and name not in blocked_words:
-                facts["name"] = name
+        name = clean_value(match.group(1))
+
+        blocked_words = {
+            "อะไร",
+            "ไร",
+            "ใคร",
+            "ไหม",
+            "มั้ย",
+            "หรือเปล่า",
+            "ของฉัน",
+            "ของเรา",
+        }
+
+        if (
+            name
+            and len(name) <= 30
+            and name not in blocked_words
+        ):
+            facts["name"] = name
 
     like_patterns = [
         r"ฉันชอบ\s*([^\n,.!?]+)",
@@ -53,12 +66,33 @@ def extract_facts(user_message, facts):
         r"ของโปรดของฉันคือ\s*([^\n,.!?]+)",
     ]
 
+    blocked_like_values = {
+        "อะไร",
+        "ไร",
+        "อะไรนะ",
+        "อะไรหรอ",
+        "อะไรเหรอ",
+        "ไหม",
+        "มั้ย",
+        "หรือเปล่า",
+        "อะไรครับ",
+        "อะไรคะ",
+    }
+
     for pattern in like_patterns:
         match = re.search(pattern, text)
-        if match:
-            liked = clean_value(match.group(1))
-            if liked and len(liked) <= 80:
-                facts["likes"] = liked
+
+        if not match:
+            continue
+
+        liked = clean_value(match.group(1))
+
+        if (
+            liked
+            and len(liked) <= 80
+            and liked not in blocked_like_values
+        ):
+            facts["likes"] = liked
 
     return facts
 
@@ -84,13 +118,49 @@ def is_name_question(user_message):
     return any(question in text for question in name_questions)
 
 
+def is_like_question(user_message):
+    text = user_message.strip()
+    text = text.replace("?", "")
+    text = text.replace("มั้ย", "ไหม")
+
+    like_questions = [
+        "ฉันชอบอะไร",
+        "เราชอบอะไร",
+        "ฉันชอบไร",
+        "เราชอบไร",
+        "จำได้ไหมว่าฉันชอบอะไร",
+        "จำได้ไหมว่าเราชอบอะไร",
+        "ฉันชอบอะไรนะ",
+        "เราชอบอะไรนะ",
+    ]
+
+    return any(question in text for question in like_questions)
+
+
 def answer_from_facts(user_message, facts):
+
     if is_name_question(user_message):
         name = facts.get("name")
 
         if name:
-            return f"เธอชื่อ {name} ไง มนุษย์จำชื่อตัวเองไม่ไหวแล้วเหรอ หรือกำลังทดสอบ pixie ตัวเล็ก ๆ อยู่กันแน่"
+            return (
+                f"เธอชื่อ {name} ไง "
+                "มนุษย์จำชื่อตัวเองไม่ไหวแล้วเหรอ "
+                "หรือกำลังทดสอบ pixie ตัวเล็ก ๆ อยู่กันแน่"
+            )
 
-        return "ฉันยังไม่รู้ชื่อเธอนะ ลองบอกฉันก่อนว่า ‘ฉันชื่อ...’ แล้วฉันจะพยายามจำให้ดี แบบไม่ทำตกหลังเคาน์เตอร์"
+        return (
+            "ฉันยังไม่รู้ชื่อเธอนะ "
+            "ลองบอกฉันก่อนว่า 'ฉันชื่อ...' "
+            "แล้วฉันจะพยายามจำให้ดี"
+        )
+
+    if is_like_question(user_message):
+        liked = facts.get("likes")
+
+        if liked:
+            return f"เท่าที่ฉันจำได้ เธอชอบ {liked}"
+
+        return "ฉันยังไม่รู้เลยว่าเธอชอบอะไร ลองบอกฉันก่อนสิ"
 
     return None
