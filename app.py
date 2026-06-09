@@ -41,6 +41,7 @@ from redemption import (
 from auth_manager import login_or_create_user
 from planner import build_plan, explain_plan
 from agent_tools import list_available_tools, run_tool
+from prompt_builder import build_main_prompt
 
 
 st.set_page_config(
@@ -696,7 +697,8 @@ def main_app():
                     else:
                         reply = f"เท่าที่ฉันจำได้ {key} คือ {value}"
                 elif facts:
-                    reply = f"เท่าที่ฉันจำได้เกี่ยวกับเธอ: {facts}"
+                    facts_text = ", ".join(f"{k}: {v}" for k, v in facts.items()) if isinstance(facts, dict) else str(facts)
+                    reply = f"เท่าที่ฉันจำได้เกี่ยวกับเธอ: {facts_text}"
                 else:
                     reply = "ฉันยังจำข้อมูลนี้ไม่ได้เลย"
 
@@ -744,40 +746,16 @@ def main_app():
             else:
 
 
-                prompt = f"""
-{CHARACTER_BIBLE}
-
-กฎบุคลิกตามระดับความสนิท:
-{stage_description}
-
-สถานะความสัมพันธ์:
-{relationship_description}
-
-โปรไฟล์ผู้ใช้:
-{user_profile_description}
-
-โหมดการตอบปัจจุบัน:
-{response_mode_description}
-
-ประวัติการคุยล่าสุด:
-{chat_history}
-
-ข้อมูลที่จำได้:
-{st.session_state.user_facts}
-
-ความทรงจำเพิ่มเติมจาก RAG:
-{rag_context}
-
-กฎการใช้ความจำ:
-- ถ้าข้อมูลที่จำได้มี name ให้ใช้ชื่อนั้นเมื่อตอบคำถามเกี่ยวกับชื่อผู้ใช้
-- ห้ามตอบว่าไม่รู้ชื่อ ถ้าในข้อมูลที่จำได้มี name อยู่แล้ว
-- ถ้าผู้ใช้ถามว่า "ฉันชื่ออะไร" ให้ตอบจากข้อมูลที่จำได้โดยตรง
-- ถ้าผู้ใช้ถามว่า "ฉันชอบอะไร" ให้ตอบจากข้อมูลที่จำได้โดยตรง
-- ใช้ความจำอย่างเป็นธรรมชาติ ไม่ต้องประกาศว่าอ่านจากระบบ
-
-ผู้ใช้พูดว่า:
-{user_message}
-"""
+                prompt = build_main_prompt(
+                    stage_description=stage_description,
+                    relationship_description=relationship_description,
+                    user_profile_description=user_profile_description,
+                    response_mode_description=response_mode_description,
+                    chat_history=chat_history,
+                    user_facts=st.session_state.user_facts,
+                    rag_context=rag_context,
+                    user_message=user_message,
+                )
 
                 try:
                     if USE_FAKE_AI or use_dev_test_mode:
