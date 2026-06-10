@@ -1,11 +1,32 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from agent_tools import run_tool
 
 
+_ACTION_COOLDOWNS = {
+    "ask_memory_seed": timedelta(hours=24),
+    "suggest_reward_check": timedelta(hours=24),
+    "relationship_checkpoint": timedelta(hours=24),
+}
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _action_on_cooldown(session_state: Any, action: str) -> bool:
+    last_fired = (session_state.get("_autonomous_action_last_fired") or {}).get(action)
+    if last_fired is None:
+        return False
+    cooldown = _ACTION_COOLDOWNS.get(action, timedelta(hours=1))
+    return datetime.now(timezone.utc) - last_fired < cooldown
+
+
+def _mark_action_fired(session_state: Any, action: str) -> None:
+    if "_autonomous_action_last_fired" not in session_state:
+        session_state["_autonomous_action_last_fired"] = {}
+    session_state["_autonomous_action_last_fired"][action] = datetime.now(timezone.utc)
 
 
 def build_autonomous_decision(session_state: Any) -> Dict:
@@ -81,12 +102,26 @@ def _generate_autonomous_message(model: Any, reason: str) -> Optional[str]:
 def run_autonomous_check(session_state: Any, model: Any = None) -> Dict:
     decision = build_autonomous_decision(session_state)
 
+    # Deduplicate: suppress actions that are still on cooldown
     if decision.get("should_act"):
+        action = decision.get("action", "")
+        if _action_on_cooldown(session_state, action):
+            decision["should_act"] = False
+            decision["message"] = None
+            return {
+                "ok": True,
+                "timestamp": now_iso(),
+                "decision": decision,
+                "tool_result": None,
+            }
+
         if model:
             ai_msg = _generate_autonomous_message(model, decision["reason"])
             decision["message"] = ai_msg or decision["fallback_message"]
         else:
             decision["message"] = decision["fallback_message"]
+
+        _mark_action_fired(session_state, action)
     else:
         decision["message"] = None
 

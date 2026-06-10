@@ -4,8 +4,11 @@ import google.generativeai as genai
 from behavior import get_stage, get_stage_description
 from character import CHARACTER_BIBLE
 from memory import build_chat_history
-from rag_prompt import build_safe_rag_context
+from rag_prompt import build_safe_rag_context, get_raw_memories
 from rag_memory import save_memory_note
+from truth_engine import classify as classify_query
+from memory_verifier import verify as verify_memories
+from response_router import route as route_response, RouteType
 from facts import extract_facts, answer_from_facts
 from rewards import check_reward
 from relationship import (
@@ -674,22 +677,22 @@ def main_app():
             limit=10
         )
 
-        rag_context = build_safe_rag_context(
+        # 1. Classify query intent
+        classification = classify_query(user_message, st.session_state.user_facts)
+
+        # 2. Fetch and verify RAG memories
+        raw_memories = get_raw_memories(
             user_id=user_id,
             user_message=user_message,
             limit=5
         )
+        verified = verify_memories(raw_memories)
 
-
-        plan = build_plan(
-            user_message,
-            st.session_state
-        )
-
+        # 3. Run planner for tool-based intents
+        plan = build_plan(user_message, st.session_state)
         st.session_state.last_agent_plan = plan
 
         planner_result = None
-
         if plan and plan.get("tool"):
             planner_result = run_tool(
                 plan["tool"],
@@ -697,9 +700,22 @@ def main_app():
                 plan.get("arguments", {})
             )
 
-        if planner_result and planner_result.get("ok"):
+        # 4. Route to the correct response strategy
+        route_decision = route_response(
+            classification=classification,
+            user_facts=st.session_state.user_facts,
+            planner_result=planner_result,
+            verified_memories=verified,
+        )
 
-            if planner_result["tool"] == "check_memory":
+        # 5. Execute routing decision
+        if route_decision.route_type == RouteType.STRUCTURED_MEMORY:
+            reply = route_decision.direct_reply
+
+        elif route_decision.route_type == RouteType.TOOL_ANSWER and planner_result and planner_result.get("ok"):
+            tool_name = planner_result.get("tool")
+
+            if tool_name == "check_memory":
                 facts = planner_result.get("facts", {})
                 value = planner_result.get("value")
                 key = planner_result.get("key")
@@ -712,34 +728,31 @@ def main_app():
                     else:
                         reply = f"เท่าที่ฉันจำได้ {key} คือ {value}"
                 elif facts:
-                    facts_text = ", ".join(f"{k}: {v}" for k, v in facts.items()) if isinstance(facts, dict) else str(facts)
-                    reply = f"เท่าที่ฉันจำได้เกี่ยวกับเธอ: {facts_text}"
+                    clean_facts = {k: v for k, v in facts.items() if isinstance(facts, dict) and not k.startswith("_")}
+                    facts_text = ", ".join(f"{k}: {v}" for k, v in clean_facts.items())
+                    reply = f"เท่าที่ฉันจำได้เกี่ยวกับเธอ: {facts_text}" if facts_text else "ฉันยังจำข้อมูลนี้ไม่ได้เลย"
                 else:
                     reply = "ฉันยังจำข้อมูลนี้ไม่ได้เลย"
 
-            elif planner_result["tool"] == "get_user_state":
+            elif tool_name == "get_user_state":
                 reply = (
                     f"ตอนนี้เธออยู่ Stage "
                     f"{planner_result.get('stage')} "
                     f"และมี {planner_result.get('points')} points"
                 )
 
-            elif planner_result["tool"] == "get_inventory":
+            elif tool_name == "get_inventory":
                 inventory = planner_result.get("inventory", [])
+                reply = f"ของที่เธอมีตอนนี้คือ {inventory}" if inventory else "ตอนนี้เธอยังไม่มีของใน inventory"
 
-                if inventory:
-                    reply = f"ของที่เธอมีตอนนี้คือ {inventory}"
-                else:
-                    reply = "ตอนนี้เธอยังไม่มีของใน inventory"
-
-            elif planner_result["tool"] == "get_relationship_state":
+            elif tool_name == "get_relationship_state":
                 reply = (
                     f"สถานะตอนนี้ trust={planner_result.get('trust')}, "
                     f"familiarity={planner_result.get('familiarity')}, "
                     f"curiosity={planner_result.get('curiosity')}"
                 )
 
-            elif planner_result["tool"] == "get_visit_count":
+            elif tool_name == "get_visit_count":
                 reply = (
                     f"เธอแวะมาทั้งหมด "
                     f"{planner_result.get('total_visits')} ครั้ง "
@@ -751,52 +764,43 @@ def main_app():
                 reply = str(planner_result)
 
         else:
-            direct_reply = answer_from_facts(
-                user_message,
-                st.session_state.user_facts
+            prompt = build_main_prompt(
+                stage_description=stage_description,
+                relationship_description=relationship_description,
+                user_profile_description=user_profile_description,
+                response_mode_description=response_mode_description,
+                chat_history=chat_history,
+                user_facts=st.session_state.user_facts,
+                rag_context=route_decision.rag_context,
+                user_message=user_message,
+                relationship_state=st.session_state.relationship_state,
+                live_data_warning=route_decision.live_data_warning,
             )
 
-            if direct_reply:
-                reply = direct_reply
-            else:
+            try:
+                if USE_FAKE_AI or use_dev_test_mode:
+                    analytics = calculate_analytics(st.session_state)
 
-
-                prompt = build_main_prompt(
-                    stage_description=stage_description,
-                    relationship_description=relationship_description,
-                    user_profile_description=user_profile_description,
-                    response_mode_description=response_mode_description,
-                    chat_history=chat_history,
-                    user_facts=st.session_state.user_facts,
-                    rag_context=rag_context,
-                    user_message=user_message,
-                    relationship_state=st.session_state.relationship_state,
-                )
-
-                try:
-                    if USE_FAKE_AI or use_dev_test_mode:
-                        analytics = calculate_analytics(st.session_state)
-
-                        reply = generate_fake_reply(
-                            user_message,
-                            stage,
-                            response_mode,
-                            st.session_state.user_facts,
-                            st.session_state.relationship_state,
-                            analytics
-                        )
-                    else:
-                        response = model.generate_content(prompt)
-                        reply = response.text
-                except Exception as e:
-                    reply = build_fallback_reply(
-                        str(e),
+                    reply = generate_fake_reply(
                         user_message,
                         stage,
                         response_mode,
                         st.session_state.user_facts,
-                        st.session_state.relationship_state
+                        st.session_state.relationship_state,
+                        analytics
                     )
+                else:
+                    response = model.generate_content(prompt)
+                    reply = response.text
+            except Exception as e:
+                reply = build_fallback_reply(
+                    str(e),
+                    user_message,
+                    stage,
+                    response_mode,
+                    st.session_state.user_facts,
+                    st.session_state.relationship_state
+                )
 
         st.session_state.messages.append({
             "role": "assistant",

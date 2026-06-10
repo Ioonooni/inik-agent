@@ -33,6 +33,7 @@ def build_main_prompt(
     rag_context: str,
     user_message: str,
     relationship_state: dict = None,
+    live_data_warning: str = None,
 ) -> str:
     facts_text = (
         "\n".join(f"- {k}: {v}" for k, v in user_facts.items() if not k.startswith("_"))
@@ -67,6 +68,9 @@ def build_main_prompt(
 
     if tone_directive:
         parts += [tone_directive, ""]
+
+    if live_data_warning:
+        parts += [live_data_warning, ""]
 
     parts += [
         "โปรไฟล์ผู้ใช้:",
