@@ -46,8 +46,8 @@ def test_arithmetic_direct_answer() -> None:
         c = classify(msg, {})
         d = route(c, {}, None, [])
         _check(
-            f'"{msg}" → STRUCTURED_MEMORY',
-            d.route_type == RouteType.STRUCTURED_MEMORY,
+            f'"{msg}" → DIRECT_ANSWER',
+            d.route_type == RouteType.DIRECT_ANSWER,
             f"got route={d.route_type}",
         )
         _check(
@@ -158,13 +158,13 @@ def test_live_data_warning_and_no_invention() -> None:
             f"got {d.live_data_warning}",
         )
         _check(
-            f'"{msg}" → GEMINI_NO_MEMORY',
-            d.route_type == RouteType.GEMINI_NO_MEMORY,
+            f'"{msg}" → DIRECT_ANSWER',
+            d.route_type == RouteType.DIRECT_ANSWER,
             f"got {d.route_type}",
         )
         _check(
-            f'"{msg}" → no direct_reply (no invention)',
-            d.direct_reply is None,
+            f'"{msg}" → direct_reply set (deterministic no-live-data message)',
+            d.direct_reply is not None,
             f"got {d.direct_reply}",
         )
 
@@ -333,15 +333,15 @@ def test_smoke_all_required() -> None:
     # 6. 2+2 เท่ากับเท่าไหร่ — deterministic, no Gemini needed, no state dump
     c6 = classify("2+2 เท่ากับเท่าไหร่", facts)
     d6 = route(c6, facts, None, [])
-    _check('"2+2 เท่ากับเท่าไหร่" → STRUCTURED_MEMORY', d6.route_type == RouteType.STRUCTURED_MEMORY, f"got {d6.route_type}")
+    _check('"2+2 เท่ากับเท่าไหร่" → DIRECT_ANSWER', d6.route_type == RouteType.DIRECT_ANSWER, f"got {d6.route_type}")
     _check('"2+2 เท่ากับเท่าไหร่" → answer = 4', d6.direct_reply == "4", f"got {d6.direct_reply}")
 
     # 7. วันนี้อากาศเป็นไง — live data, must not invent, must get warning
     c7 = classify("วันนี้อากาศเป็นไง", facts)
     d7 = route(c7, facts, None, [])
     _check('"วันนี้อากาศเป็นไง" → live_data_warning', d7.live_data_warning is not None, f"got {d7.live_data_warning}")
-    _check('"วันนี้อากาศเป็นไง" → GEMINI_NO_MEMORY', d7.route_type == RouteType.GEMINI_NO_MEMORY, f"got {d7.route_type}")
-    _check('"วันนี้อากาศเป็นไง" → no direct_reply', d7.direct_reply is None, f"got {d7.direct_reply}")
+    _check('"วันนี้อากาศเป็นไง" → DIRECT_ANSWER', d7.route_type == RouteType.DIRECT_ANSWER, f"got {d7.route_type}")
+    _check('"วันนี้อากาศเป็นไง" → direct_reply set (no-live-data message)', d7.direct_reply is not None, f"got {d7.direct_reply}")
 
     # 8. สถานะของฉัน — tool answer
     state_mock = {"ok": True, "tool": "get_user_state", "stage": "1", "points": 5}

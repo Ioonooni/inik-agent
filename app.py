@@ -901,38 +901,39 @@ def main_app():
                 relationship_state=st.session_state.relationship_state,
                 live_data_warning=route_decision.live_data_warning,
             )
-        _bypass_gemini = bool(USE_FAKE_AI)
 
-        try:
-            if _bypass_gemini:
-                analytics = calculate_analytics(st.session_state)
-                reply = generate_fake_reply(
+            _bypass_gemini = bool(USE_FAKE_AI)
+
+            try:
+                if _bypass_gemini:
+                    analytics = calculate_analytics(st.session_state)
+                    reply = generate_fake_reply(
+                        user_message,
+                        stage,
+                        response_mode,
+                        st.session_state.user_facts,
+                        st.session_state.relationship_state,
+                        analytics,
+                    )
+                else:
+                    response = model.generate_content(prompt)
+                    reply = response.text
+
+            except Exception as e:
+                error_text = repr(e)
+                print("GEMINI ERROR:", error_text)
+                st.session_state.last_gemini_error = error_text
+                st.sidebar.error(f"Gemini error: {error_text[:180]}")
+
+                reply = build_fallback_reply(
+                    str(e),
                     user_message,
                     stage,
                     response_mode,
                     st.session_state.user_facts,
                     st.session_state.relationship_state,
-                    analytics,
+                    query_type=classification.query_type,
                 )
-            else:
-                response = model.generate_content(prompt)
-                reply = response.text
-
-        except Exception as e:
-            error_text = repr(e)
-            print("GEMINI ERROR:", error_text)
-            st.session_state.last_gemini_error = error_text
-            st.sidebar.error(f"Gemini error: {error_text[:180]}")
-
-            reply = build_fallback_reply(
-                str(e),
-                user_message,
-                stage,
-                response_mode,
-                st.session_state.user_facts,
-                st.session_state.relationship_state,
-                query_type=classification.query_type,
-            )
 
         st.session_state.messages.append({
             "role": "assistant",
