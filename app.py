@@ -780,7 +780,7 @@ def main_app():
             user_message=user_message,
             limit=5
         )
-        verified = verify_memories(raw_memories)
+        verified = verify_memories(raw_memories or [])
 
         # 3. Run planner for tool-based intents
         plan = build_plan(user_message, st.session_state)
@@ -837,6 +837,7 @@ def main_app():
         if route_decision.direct_reply is not None:
             reply = route_decision.direct_reply
 
+        return reply
         return reply  # PATCHED: Early exit for direct memory recall
         elif route_decision.route_type == RouteType.TOOL_ANSWER and planner_result and planner_result.get("ok"):
             tool_name = planner_result.get("tool")
