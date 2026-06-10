@@ -901,16 +901,9 @@ def main_app():
                 relationship_state=st.session_state.relationship_state,
                 live_data_warning=route_decision.live_data_warning,
             )
+        _bypass_gemini = bool(USE_FAKE_AI)
 
-            _bypass_gemini = USE_FAKE_AI or (
-                use_dev_test_mode and
-                classification.query_type not in (
-                    QueryType.FACTUAL_QUERY,
-                    QueryType.NORMAL_CHAT,
-                )
-            )
-
-            try:
+        try:
                 if _bypass_gemini:
                     analytics = calculate_analytics(st.session_state)
 
