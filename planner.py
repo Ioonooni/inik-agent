@@ -57,6 +57,8 @@ def build_plan(user_message: str, session_state):
         "ของรางวัล",
         "มีรางวัล",
         "รางวัลที่ได้",
+        "มีของอะไรบ้าง",
+        "มีไอเท็ม",
     ]):
         return {
             "goal": "inventory_lookup",

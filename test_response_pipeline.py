@@ -205,13 +205,14 @@ def test_tool_queries_use_planner() -> None:
 # 7. Fallback must not dump user state for factual/normal queries
 # ---------------------------------------------------------------------------
 def test_fallback_no_state_dump() -> None:
-    print("\n=== Fallback must NOT dump user state for FACTUAL/NORMAL ===")
+    print("\n=== Fallback must NOT dump user state for ANY query type ===")
 
     user_facts = {"name": "ไออุ่น"}
     rel_state = {"trust": 30, "familiarity": 20, "curiosity": 10}
     state_markers = ["Trust:", "Familiarity:", "Stage:", "Curiosity:"]
 
-    for qtype in ("FACTUAL_QUERY", "NORMAL_CHAT"):
+    # ALL known query types must never leak state
+    for qtype in ("FACTUAL_QUERY", "NORMAL_CHAT", "MEMORY_QUERY", "TOOL_QUERY", "RELATIONSHIP_QUERY", None):
         for err in ("429 quota exceeded", "Connection timeout", "Unknown error"):
             reply = build_fallback_reply(
                 err,
@@ -224,7 +225,7 @@ def test_fallback_no_state_dump() -> None:
             )
             for marker in state_markers:
                 _check(
-                    f'{qtype}/{err[:10]} fallback has no "{marker}"',
+                    f'{str(qtype)}/{err[:10]} fallback has no "{marker}"',
                     marker not in reply,
                     f"got: {reply[:80]}",
                 )
@@ -351,6 +352,228 @@ def test_smoke_all_required() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 11. Adversarial: stored preference must NEVER contaminate factual answers
+# ---------------------------------------------------------------------------
+def test_adversarial_no_memory_contamination() -> None:
+    print("\n=== ADVERSARIAL: stored preference must not contaminate factual queries ===")
+
+    # Scenario A: user says they like black holes, then asks what black holes are
+    facts_bh = {"name": "ไออุ่น", "likes": "หลุมดำ"}
+    echo_bh = [{"content": "ฉันชอบหลุมดำ", "memory_type": "user_message"}]
+    verified_bh = verify(echo_bh)
+
+    for msg in ["หลุมดำคืออะไร", "เล่าเรื่องหลุมดำ"]:
+        c = classify(msg, facts_bh)
+        d = route(c, facts_bh, None, verified_bh)
+        _check(
+            f'[likes=หลุมดำ] "{msg}" must be FACTUAL (not MEMORY)',
+            c.query_type == QueryType.FACTUAL_QUERY,
+            f"got {c.query_type}",
+        )
+        _check(
+            f'[likes=หลุมดำ] "{msg}" → GEMINI_NO_MEMORY',
+            d.route_type == RouteType.GEMINI_NO_MEMORY,
+            f"got {d.route_type}",
+        )
+        _check(
+            f'[likes=หลุมดำ] "{msg}" no direct_reply',
+            d.direct_reply is None,
+            f"got {d.direct_reply}",
+        )
+        _check(
+            f'[likes=หลุมดำ] "{msg}" no memory RAG',
+            "เธอเคยพูดว่า" not in d.rag_context,
+            f"rag={d.rag_context}",
+        )
+
+    # Scenario B: user likes Saturn, then asks factual Saturn questions
+    facts_sat = {"name": "ไออุ่น", "likes": "ดาวเสาร์"}
+    echo_sat = [{"content": "ฉันชอบดาวเสาร์", "memory_type": "user_message"}]
+    verified_sat = verify(echo_sat)
+
+    for msg in ["ดาวเสาร์คืออะไร", "เล่าเรื่องดาวเสาร์", "ดาวเสาร์อยู่ห่างโลกแค่ไหน"]:
+        c = classify(msg, facts_sat)
+        d = route(c, facts_sat, None, verified_sat)
+        _check(
+            f'[likes=ดาวเสาร์] "{msg}" must not be MEMORY_QUERY',
+            c.query_type != QueryType.MEMORY_QUERY,
+            f"got {c.query_type}",
+        )
+        _check(
+            f'[likes=ดาวเสาร์] "{msg}" no direct memory reply',
+            d.direct_reply is None or "ดาวเสาร์" not in (d.direct_reply or ""),
+            f"got {d.direct_reply}",
+        )
+
+    # Scenario C: user sets name, asks completely unrelated factual question
+    facts_name = {"name": "ไออุ่น"}
+    for msg in ["โลกกลมไหม", "หลุมดำคืออะไร", "อธิบายควอนตัม"]:
+        c = classify(msg, facts_name)
+        d = route(c, facts_name, None, [])
+        _check(
+            f'[name=ไออุ่น] "{msg}" must be FACTUAL',
+            c.query_type == QueryType.FACTUAL_QUERY,
+            f"got {c.query_type}",
+        )
+        _check(
+            f'[name=ไออุ่น] "{msg}" must not mention ไออุ่น in direct_reply',
+            "ไออุ่น" not in (d.direct_reply or ""),
+            f"got {d.direct_reply}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# 12. Adversarial: classification edge cases and Thai language variants
+# ---------------------------------------------------------------------------
+def test_adversarial_classification_edge_cases() -> None:
+    print("\n=== ADVERSARIAL: edge cases and Thai variants ===")
+
+    facts = {"name": "ไออุ่น", "likes": "ดาวเสาร์"}
+
+    # Memory questions in various Thai question forms
+    memory_forms = [
+        "ชื่อฉันคืออะไร",
+        "จำชื่อฉันได้ไหม",
+        "ชื่อฉันคืออะไรนะ",
+        "รู้จักชื่อฉันไหม",
+    ]
+    for msg in memory_forms:
+        c = classify(msg, facts)
+        _check(
+            f'memory question "{msg}" → MEMORY_QUERY',
+            c.query_type == QueryType.MEMORY_QUERY,
+            f"got {c.query_type}",
+        )
+
+    # Inventory query variants
+    inventory_forms = ["ฉันมีของอะไรบ้าง", "สถานะของฉัน", "คะแนนของฉันเท่าไร"]
+    for msg in inventory_forms:
+        c = classify(msg, {})
+        _check(
+            f'state query "{msg}" → TOOL_QUERY or RELATIONSHIP_QUERY',
+            c.query_type in (QueryType.TOOL_QUERY, QueryType.RELATIONSHIP_QUERY),
+            f"got {c.query_type}",
+        )
+
+    # Ambiguous inputs must NOT be MEMORY_QUERY
+    ambiguous = ["ดาวเสาร์", "หลุมดำ", "เศร้าอะ", "เหนื่อยจัง"]
+    for msg in ambiguous:
+        c = classify(msg, facts)
+        _check(
+            f'ambiguous "{msg}" must not be MEMORY_QUERY',
+            c.query_type != QueryType.MEMORY_QUERY,
+            f"got {c.query_type}",
+        )
+
+    # Negative arithmetic
+    arith_neg = [("-5+2", "-3"), ("-10*2", "-20")]
+    from truth_engine import _try_eval_math
+    for expr, expected in arith_neg:
+        result = _try_eval_math(expr)
+        _check(
+            f'negative math "{expr}" = "{expected}"',
+            result == expected,
+            f"got {result}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# 13. None-safe direct_reply guard
+# ---------------------------------------------------------------------------
+def test_structured_memory_never_none() -> None:
+    print("\n=== STRUCTURED_MEMORY direct_reply must never be None ===")
+
+    # When facts has the key, direct_reply must be a string
+    facts = {"name": "ไออุ่น", "likes": "ดาวเสาร์"}
+    for msg in ["ฉันชื่ออะไร", "ฉันชอบอะไร"]:
+        c = classify(msg, facts)
+        d = route(c, facts, None, [])
+        if d.route_type == RouteType.STRUCTURED_MEMORY:
+            _check(
+                f'"{msg}" STRUCTURED_MEMORY direct_reply is non-empty string',
+                isinstance(d.direct_reply, str) and len(d.direct_reply) > 0,
+                f"got {d.direct_reply!r}",
+            )
+
+    # Arithmetic STRUCTURED_MEMORY direct_reply is always a string
+    for msg, expected in [("2+2", "4"), ("10-3", "7")]:
+        c = classify(msg, {})
+        d = route(c, {}, None, [])
+        _check(
+            f'arithmetic "{msg}" direct_reply = "{expected}"',
+            d.direct_reply == expected,
+            f"got {d.direct_reply!r}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# 14. Full acceptance test matrix (all required cases from spec)
+# ---------------------------------------------------------------------------
+def test_full_acceptance_matrix() -> None:
+    print("\n=== FULL ACCEPTANCE MATRIX ===")
+
+    from facts import extract_facts
+
+    facts = {}
+    facts = extract_facts("ฉันชื่อไออุ่น", facts)
+    facts = extract_facts("ฉันชอบดาวเสาร์", facts)
+    state_mock = {"ok": True, "tool": "get_user_state", "stage": "1", "points": 5}
+    inv_mock   = {"ok": True, "tool": "get_inventory",  "inventory": []}
+    rel_mock   = {"ok": True, "tool": "get_relationship_state", "trust": 10}
+
+    matrix = [
+        # (message, facts_to_use, planner_mock, check_fn_label, check_fn)
+        ("ฉันชื่ออะไร",            facts, None,       "STRUCTURED_MEMORY+ไออุ่น",
+            lambda c, d: d.route_type == RouteType.STRUCTURED_MEMORY and "ไออุ่น" in (d.direct_reply or "")),
+        ("ชื่อฉันคืออะไร",          facts, None,       "STRUCTURED_MEMORY+ไออุ่น",
+            lambda c, d: d.route_type == RouteType.STRUCTURED_MEMORY and "ไออุ่น" in (d.direct_reply or "")),
+        ("ฉันชอบอะไร",             facts, None,       "STRUCTURED_MEMORY+ดาวเสาร์",
+            lambda c, d: d.route_type == RouteType.STRUCTURED_MEMORY and "ดาวเสาร์" in (d.direct_reply or "")),
+        ("จำอะไรได้บ้าง",          facts, None,       "MEMORY_QUERY",
+            lambda c, d: c.query_type == QueryType.MEMORY_QUERY),
+        ("2+2 เท่ากับเท่าไร",       {},    None,       "direct=4",
+            lambda c, d: d.direct_reply == "4"),
+        ("15*3",                   {},    None,       "direct=45",
+            lambda c, d: d.direct_reply == "45"),
+        ("โลกกลมไหม",              {},    None,       "GEMINI_NO_MEMORY",
+            lambda c, d: d.route_type == RouteType.GEMINI_NO_MEMORY and d.direct_reply is None),
+        ("หลุมดำคืออะไร",           {},    None,       "GEMINI_NO_MEMORY",
+            lambda c, d: d.route_type == RouteType.GEMINI_NO_MEMORY),
+        ("ดาวเสาร์คืออะไร",         facts, None,       "GEMINI_NO_MEMORY (not memory)",
+            lambda c, d: d.route_type == RouteType.GEMINI_NO_MEMORY and c.query_type == QueryType.FACTUAL_QUERY),
+        ("เล่าเรื่องหลุมดำ",         facts, None,       "GEMINI_NO_MEMORY",
+            lambda c, d: d.route_type == RouteType.GEMINI_NO_MEMORY),
+        ("เล่าเรื่องดาวเสาร์",       facts, None,       "GEMINI_NO_MEMORY (not memory)",
+            lambda c, d: d.route_type == RouteType.GEMINI_NO_MEMORY and c.query_type == QueryType.FACTUAL_QUERY),
+        ("วันนี้อากาศเป็นไง",        {},    None,       "live_data_warning",
+            lambda c, d: d.live_data_warning is not None and d.direct_reply is None),
+        ("ตอนนี้กี่โมง",             {},    None,       "live_data_warning",
+            lambda c, d: d.live_data_warning is not None),
+        ("ราคาทองวันนี้เท่าไร",      {},    None,       "live_data_warning",
+            lambda c, d: d.live_data_warning is not None),
+        ("สถานะของฉัน",             {},    state_mock, "TOOL_ANSWER",
+            lambda c, d: d.route_type == RouteType.TOOL_ANSWER),
+        ("คะแนนของฉันเท่าไร",       {},    state_mock, "TOOL_ANSWER",
+            lambda c, d: d.route_type == RouteType.TOOL_ANSWER),
+        ("ฉันมีของอะไรบ้าง",         {},    inv_mock,   "TOOL_ANSWER",
+            lambda c, d: d.route_type == RouteType.TOOL_ANSWER),
+        ("ความสัมพันธ์ตอนนี้เป็นไง", {},    rel_mock,   "TOOL_ANSWER",
+            lambda c, d: d.route_type == RouteType.TOOL_ANSWER),
+        ("เหนื่อยอะ",               {},    None,       "NORMAL_CHAT no direct_reply",
+            lambda c, d: c.query_type == QueryType.NORMAL_CHAT and d.direct_reply is None),
+        ("คุยเล่นหน่อย",            {},    None,       "NORMAL_CHAT no direct_reply",
+            lambda c, d: c.query_type == QueryType.NORMAL_CHAT and d.direct_reply is None),
+        ("วันนี้เบื่อจัง",           {},    None,       "NORMAL_CHAT no direct_reply",
+            lambda c, d: c.query_type == QueryType.NORMAL_CHAT and d.direct_reply is None),
+    ]
+
+    for msg, f, mock, label, check in matrix:
+        c = classify(msg, f)
+        d = route(c, f, mock, [])
+        _check(f'"{msg}" → {label}', check(c, d), f"query={c.query_type} route={d.route_type} reply={d.direct_reply!r}")
+
+
+# ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -364,6 +587,10 @@ if __name__ == "__main__":
     test_echo_not_in_gemini_context()
     test_memory_write_extraction()
     test_smoke_all_required()
+    test_adversarial_no_memory_contamination()
+    test_adversarial_classification_edge_cases()
+    test_structured_memory_never_none()
+    test_full_acceptance_matrix()
 
     print(f"\n{'='*50}")
     print(f"Results: {_PASS} passed, {_FAIL} failed")

@@ -9,10 +9,12 @@ from confidence import MemoryConfidence, score_fact_reliability
 
 # Matched as substrings — explicit user intent to recall stored memory only
 _EXPLICIT_MEMORY_PHRASES = (
-    # Name
+    # Name — all common Thai question forms
     "ชื่ออะไร", "ชื่อว่าอะไร", "รู้ชื่อฉัน", "ชื่อของฉัน",
+    "ชื่อฉัน", "ชื่อเรา", "ชื่อของเรา", "จำชื่อ",
     # Likes / dislikes
     "ฉันชอบอะไร", "ชอบอะไรบ้าง", "ฉันไม่ชอบอะไร",
+    "ชอบไร", "รู้ว่าชอบ",
     # Memory recall
     "จำได้ไหม", "จำอะไรได้", "จำเรื่องอะไร", "จำฉันได้",
     "รู้จักฉัน", "รู้อะไรเกี่ยวกับฉัน",
@@ -53,6 +55,7 @@ _TOOL_WORDS = (
     "คะแนน", "แต้ม", "point", "points",
     "inventory", "ไอเท็ม", "ของใน inventory", "ดูของ",
     "ของรางวัล", "รางวัล",
+    "มีของอะไรบ้าง", "มีไอเท็ม",
     "stage", "เลเวล",
     "สถานะของฉัน",
 )
@@ -66,8 +69,9 @@ _RELATIONSHIP_WORDS = (
 # Simple math expression — whole text is pure arithmetic
 _MATH_RE = re.compile(r'^[\d\s\+\-\*\/\=\(\)\.]+$')
 
-# Extract arithmetic sub-expression from text that may also contain Thai words
-_MATH_EXPR_RE = re.compile(r'[\d\.]+(?:\s*[\+\-\*\/]\s*[\d\.]+)+')
+# Extract arithmetic sub-expression from text that may also contain Thai words.
+# Leading unary minus supported by prefixing optional [-\s]* before the first operand.
+_MATH_EXPR_RE = re.compile(r'[\-\+]?\s*[\d\.]+(?:\s*[\+\-\*\/]\s*[\d\.]+)+')
 
 _MATH_OPS = {
     ast.Add: operator.add,

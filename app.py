@@ -9,7 +9,7 @@ from rag_memory import save_memory_note
 from truth_engine import classify as classify_query, QueryType
 from memory_verifier import verify as verify_memories
 from response_router import route as route_response, RouteType
-from facts import extract_facts, answer_from_facts
+from facts import extract_facts
 from rewards import check_reward
 from relationship import (
     create_relationship_state,
@@ -733,7 +733,7 @@ def main_app():
 
         # 5. Execute routing decision
         if route_decision.route_type == RouteType.STRUCTURED_MEMORY:
-            reply = route_decision.direct_reply
+            reply = route_decision.direct_reply or "ฉันจำข้อมูลนั้นไม่ได้ตอนนี้"
 
         elif route_decision.route_type == RouteType.TOOL_ANSWER and planner_result and planner_result.get("ok"):
             tool_name = planner_result.get("tool")
