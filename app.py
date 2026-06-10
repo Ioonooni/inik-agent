@@ -918,7 +918,7 @@ def main_app():
                 else:
                     response = model.generate_content(prompt)
                     reply = response.text
-            except Exception as e:
+        except Exception as e:
                 reply = build_fallback_reply(
                     str(e),
                     user_message,
