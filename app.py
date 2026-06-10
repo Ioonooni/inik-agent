@@ -47,6 +47,7 @@ from agent_tools import list_available_tools, run_tool
 from prompt_builder import build_main_prompt
 from autonomous import run_autonomous_check
 from autonomous_scheduler import should_run_autonomous_check, mark_autonomous_run
+from acceptance_checks import run_acceptance_checks
 
 
 st.set_page_config(
@@ -599,6 +600,20 @@ def main_app():
                     f"rag:        {debug.get('rag_preview')}",
                     language="yaml",
                 )
+
+            if st.button("Run Acceptance Checks", use_container_width=True):
+                st.session_state.last_acceptance_report = run_acceptance_checks(st.session_state)
+
+            report = st.session_state.get("last_acceptance_report")
+            if report:
+                st.caption(
+                    f"Acceptance: {report['passed']} passed / {report['failed']} failed"
+                )
+                if report["ok"]:
+                    st.success("Acceptance checks passed")
+                else:
+                    st.error("Acceptance checks failed")
+                st.json(report["results"])
 
         memory_status = get_memory_status()
 
