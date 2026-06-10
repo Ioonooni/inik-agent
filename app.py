@@ -923,7 +923,7 @@ def main_app():
             print("GEMINI ERROR:", error_text)
             st.session_state.last_gemini_error = error_text
             st.sidebar.error(f"Gemini error: {error_text[:180]}")
-                reply = build_fallback_reply(
+        reply = build_fallback_reply(
                     str(e),
                     user_message,
                     stage,
