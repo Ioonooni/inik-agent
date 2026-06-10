@@ -837,6 +837,7 @@ def main_app():
         if route_decision.direct_reply is not None:
             reply = route_decision.direct_reply
 
+        return reply  # PATCHED: Early exit for direct memory recall
         elif route_decision.route_type == RouteType.TOOL_ANSWER and planner_result and planner_result.get("ok"):
             tool_name = planner_result.get("tool")
 
