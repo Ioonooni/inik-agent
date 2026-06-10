@@ -35,6 +35,7 @@ from state_tools import (
     reset_chat_only,
     reset_all_memory
 )
+from runtime_fallback import build_runtime_fallback
 from fallback import build_fallback_reply
 from health import run_health_check, get_health_label
 from event_logger import send_event_to_n8n
