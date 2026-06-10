@@ -769,17 +769,14 @@ def main_app():
                         response = model.generate_content(prompt)
                         reply = response.text
                 except Exception as e:
-                    if rag_context and rag_context != "ไม่มี RAG memory ที่เกี่ยวข้อง":
-                        reply = f"เท่าที่ฉันจำได้ เธอเคยพูดประมาณนี้:\n{rag_context}"
-                    else:
-                        reply = build_fallback_reply(
-                            str(e),
-                            user_message,
-                            stage,
-                            response_mode,
-                            st.session_state.user_facts,
-                            st.session_state.relationship_state
-                        )
+                    reply = build_fallback_reply(
+                        str(e),
+                        user_message,
+                        stage,
+                        response_mode,
+                        st.session_state.user_facts,
+                        st.session_state.relationship_state
+                    )
 
         st.session_state.messages.append({
             "role": "assistant",

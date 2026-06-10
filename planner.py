@@ -38,10 +38,12 @@ def build_plan(user_message: str, session_state):
         }
 
     if any(word in text for word in [
-        "ของ",
         "inventory",
         "ไอเท็ม",
-        "ได้รับอะไร"
+        "ของใน inventory",
+        "ได้รับของ",
+        "ได้รับอะไร",
+        "ดูของ",
     ]):
         return {
             "goal": "inventory_lookup",
