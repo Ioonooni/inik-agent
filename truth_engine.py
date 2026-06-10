@@ -139,6 +139,21 @@ class QueryClassification:
     direct_answer: Optional[str] = None
 
 
+
+def _build_live_data_direct_answer(text: str) -> str:
+    if "กี่โมง" in text or "เวลา" in text:
+        return "ฉันดูเวลาปัจจุบันแบบสดไม่ได้ เพราะยังไม่มีเครื่องมือเวลาเชื่อมอยู่"
+    if "อากาศ" in text or "weather" in text or "พยากรณ์" in text:
+        return "ฉันดูอากาศสดไม่ได้ เพราะยังไม่มีเครื่องมือ weather เชื่อมอยู่"
+    if "ราคาทอง" in text:
+        return "ฉันดูราคาทองแบบสดไม่ได้ เพราะยังไม่มีเครื่องมือราคาตลาดเชื่อมอยู่"
+    if "ราคาหุ้น" in text or "bitcoin" in text or "crypto" in text:
+        return "ฉันดูราคาปัจจุบันแบบสดไม่ได้ เพราะยังไม่มีเครื่องมือข้อมูลตลาดเชื่อมอยู่"
+    if "ข่าว" in text:
+        return "ฉันดูข่าวล่าสุดแบบสดไม่ได้ เพราะยังไม่มีเครื่องมือค้นข่าวเชื่อมอยู่"
+    return "คำถามนี้ต้องใช้ข้อมูลสด แต่ตอนนี้ฉันยังไม่มีเครื่องมือเช็กข้อมูลสดโดยตรง"
+
+
 def _detect_memory_key(text: str) -> Optional[str]:
     if "ชื่อ" in text or "name" in text:
         return "name"
@@ -154,9 +169,10 @@ def classify(user_message: str, user_facts: Dict[str, Any]) -> QueryClassificati
     if any(w in text for w in _LIVE_DATA_WORDS):
         return QueryClassification(
             query_type=QueryType.FACTUAL_QUERY,
-            confidence=MemoryConfidence.UNKNOWN,
+            confidence=MemoryConfidence.HIGH,
             requires_live_data=True,
-            can_answer_directly=False,
+            can_answer_directly=True,
+            direct_answer=_build_live_data_direct_answer(text),
         )
 
     # 2. Explicit memory question — user is asking about stored facts/history

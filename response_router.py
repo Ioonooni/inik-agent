@@ -71,10 +71,11 @@ def route(
     verified_memories: List[VerifiedMemory],
 ) -> RouteDecision:
 
-    # Live data — Gemini gets warning, no RAG injection
+    # Live data — answer directly. Do not send to Gemini, because Gemini may roleplay or invent data.
     if classification.requires_live_data:
         return RouteDecision(
-            route_type=RouteType.GEMINI_NO_MEMORY,
+            route_type=RouteType.DIRECT_ANSWER,
+            direct_reply=classification.direct_answer or "คำถามนี้ต้องใช้ข้อมูลสด แต่ตอนนี้ฉันยังไม่มีเครื่องมือเช็กข้อมูลสดโดยตรง",
             rag_context=_NO_RAG,
             live_data_warning=_LIVE_DATA_WARNING,
         )
