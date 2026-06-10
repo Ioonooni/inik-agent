@@ -6,6 +6,7 @@ from character import CHARACTER_BIBLE
 from memory import build_chat_history
 from rag_prompt import build_safe_rag_context, get_raw_memories
 from rag_memory import save_memory_note
+from memory_gateway_v2 import save_message_memory_v2
 from truth_engine import classify as classify_query, QueryType
 from memory_verifier import verify as verify_memories
 from memory_quality import assess_memory_quality
