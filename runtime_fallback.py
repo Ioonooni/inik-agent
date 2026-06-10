@@ -1,5 +1,6 @@
 
-from typing import Any
+from typing import Any, Dict, Iterable, Optional
+from memory_direct_answer import answer_direct_memory_recall
 
 
 def _qtype_name(classification: Any) -> str:
@@ -10,7 +11,20 @@ def _is_live_data(classification: Any) -> bool:
     return bool(getattr(classification, "requires_live_data", False))
 
 
-def build_runtime_fallback(user_message: str, classification: Any = None) -> str:
+def build_runtime_fallback(
+    user_message: str,
+    classification: Any = None,
+    user_facts: Optional[Dict[str, Any]] = None,
+    raw_memories: Optional[Iterable[Any]] = None,
+) -> str:
+    direct = answer_direct_memory_recall(
+        user_message=user_message,
+        user_facts=user_facts or {},
+        raw_memories=raw_memories or [],
+    )
+    if direct:
+        return direct
+
     text = (user_message or "").strip().lower()
     qtype = _qtype_name(classification)
 
@@ -26,19 +40,12 @@ def build_runtime_fallback(user_message: str, classification: Any = None) -> str
     if "FACTUAL_QUERY" in qtype:
         if "2+2" in text:
             return "4"
-        return "ตอนนี้ฉันตอบจากโมเดลหลักไม่ได้ชั่วคราว แต่คำถามนี้เป็นคำถามความรู้ ไม่ใช่ข้อมูลความจำของเธอ"
+        return "ตอนนี้ฉันตอบความรู้ผ่านโมเดลหลักไม่ได้ชั่วคราว แต่จะไม่ดึงความจำมั่ว ๆ มาตอบแทน"
 
     if "MEMORY_QUERY" in qtype:
-        return "ตอนนี้ฉันตรวจความจำระยะยาวไม่ได้ชั่วคราว แต่จะไม่เดาข้อมูลแทนความจำจริง"
+        return "ตอนนี้ฉันยังหาความจำที่ตรงกับคำถามนี้ไม่ได้ เลยจะไม่เดาแทนความจำจริง"
 
     if "TOOL_QUERY" in qtype or "RELATIONSHIP_QUERY" in qtype:
-        return "ตอนนี้ฉันอ่านสถานะระบบไม่ได้ชั่วคราว เลยยังไม่ควรเดาค่าระบบให้เธอ"
+        return "ตอนนี้ฉันอ่านสถานะระบบไม่ได้ชั่วคราว เลยจะไม่เดาค่าระบบให้เธอ"
 
-    # Normal chat fallback: no system dump, no retry loop, still character-safe.
-    if any(w in text for w in ("เหนื่อย", "ไม่ไหว", "เครียด", "เศร้า")):
-        return "ได้ยินนะ วันนี้ดูหนักอยู่เหมือนกัน พักหายใจก่อนก็ได้ ไม่ต้องรีบจัดการทุกอย่างพร้อมกัน"
-
-    if text:
-        return "รับรู้แล้วนะ ฉันยังตอบแบบโมเดลหลักไม่ได้เต็มที่ตอนนี้ แต่ข้อความนี้ไม่ควรถูกบันทึกเป็นความจำมั่ว ๆ"
-
-    return "ตอนนี้ฉันตอบไม่ได้เต็มที่ชั่วคราว"
+    return "รับรู้แล้วนะ ฉันยังตอบแบบโมเดลหลักไม่ได้เต็มที่ตอนนี้ แต่จะไม่เดาข้อมูลหรือดึงความจำมั่ว ๆ แทน"
