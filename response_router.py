@@ -7,6 +7,7 @@ from truth_engine import QueryClassification, QueryType
 
 
 class RouteType:
+    DIRECT_ANSWER = "DIRECT_ANSWER"
     STRUCTURED_MEMORY = "STRUCTURED_MEMORY"
     TOOL_ANSWER = "TOOL_ANSWER"
     GEMINI_WITH_CONTEXT = "GEMINI_WITH_CONTEXT"
@@ -82,7 +83,7 @@ def route(
     if classification.query_type == QueryType.FACTUAL_QUERY:
         if classification.can_answer_directly and classification.direct_answer is not None:
             return RouteDecision(
-                route_type=RouteType.STRUCTURED_MEMORY,
+                route_type=RouteType.DIRECT_ANSWER,
                 direct_reply=classification.direct_answer,
                 rag_context=_NO_RAG,
             )

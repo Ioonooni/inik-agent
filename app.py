@@ -62,6 +62,59 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 
 USE_FAKE_AI = False
 
+QUESTION_MARKERS = (
+    "อะไร", "ไหม", "หรือ", "เหรอ", "หรอ", "ยังไง", "อย่างไร",
+    "เท่าไหร่", "เท่าไร", "กี่", "?", "คืออะไร", "เล่าเรื่อง",
+    "อธิบาย", "ทำไม", "เพราะอะไร"
+)
+
+FACT_STORE_PREFIXES = (
+    "ฉันชื่อ", "ชื่อฉันคือ", "เรา ชื่อ", "ผมชื่อ", "หนูชื่อ",
+    "ฉันชอบ", "เราชอบ", "ผมชอบ", "หนูชอบ",
+    "ฉันไม่ชอบ", "เราไม่ชอบ", "ผมไม่ชอบ", "หนูไม่ชอบ",
+)
+
+def is_question_like(text: str) -> bool:
+    clean = (text or "").strip().lower()
+    if not clean:
+        return False
+    return any(marker in clean for marker in QUESTION_MARKERS)
+
+def should_extract_structured_facts(text: str, classification=None) -> bool:
+    clean = (text or "").strip().lower()
+    if not clean:
+        return False
+
+    # Never store facts from questions. Prevents:
+    # "ฉันชอบอะไรเกี่ยวกับหลุมดำ" -> likes="อะไรเกี่ยวกับหลุมดำ"
+    if is_question_like(clean):
+        return False
+
+    return any(clean.startswith(prefix) for prefix in FACT_STORE_PREFIXES)
+
+def should_save_rag_user_message(text: str, classification=None) -> bool:
+    clean = (text or "").strip().lower()
+    if not clean:
+        return False
+
+    # Do not save query-like prompts into RAG as long-term memories.
+    # They create echo contamination later.
+    if is_question_like(clean):
+        return False
+
+    if classification and getattr(classification, "requires_live_data", False):
+        return False
+
+    if classification and getattr(classification, "query_type", None) in (
+        QueryType.FACTUAL_QUERY,
+        QueryType.TOOL_QUERY,
+        QueryType.RELATIONSHIP_QUERY,
+    ):
+        return False
+
+    return True
+
+
 
 def show_login():
     st.title("🧚 i nik")
@@ -637,14 +690,18 @@ def main_app():
             "content": user_message
         })
 
-        try:
-            save_memory_note(
-                user_id=user_id,
-                content=user_message,
-                memory_type="user_message"
-            )
-        except Exception as error:
-            print("[RAG SAVE ERROR]", error)
+        # Classify before saving anything so questions do not poison memory/RAG.
+        classification = classify_query(user_message, st.session_state.user_facts)
+
+        if should_save_rag_user_message(user_message, classification):
+            try:
+                save_memory_note(
+                    user_id=user_id,
+                    content=user_message,
+                    memory_type="user_message"
+                )
+            except Exception as error:
+                print("[RAG SAVE ERROR]", error)
 
         st.session_state.intimacy_score = min(
             100,
@@ -655,10 +712,11 @@ def main_app():
 
         reward = check_reward(st.session_state.points)
 
-        st.session_state.user_facts = extract_facts(
-            user_message,
-            st.session_state.user_facts
-        )
+        if should_extract_structured_facts(user_message, classification):
+            st.session_state.user_facts = extract_facts(
+                user_message,
+                st.session_state.user_facts
+            )
 
         st.session_state.user_profile = update_user_profile(
             user_message,
@@ -691,8 +749,7 @@ def main_app():
             limit=10
         )
 
-        # 1. Classify query intent
-        classification = classify_query(user_message, st.session_state.user_facts)
+        # 1. Query intent was classified before memory writes.
 
         # 2. Fetch and verify RAG memories
         raw_memories = get_raw_memories(
@@ -732,7 +789,9 @@ def main_app():
         }
 
         # 5. Execute routing decision
-        if route_decision.route_type == RouteType.STRUCTURED_MEMORY:
+        # Direct deterministic / structured answers must win.
+        # This prevents Gemini from overwriting answers like 2+2 -> 4.
+        if route_decision.direct_reply is not None:
             reply = route_decision.direct_reply
 
         elif route_decision.route_type == RouteType.TOOL_ANSWER and planner_result and planner_result.get("ok"):
