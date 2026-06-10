@@ -4,21 +4,28 @@ from agent_tools import list_available_tools
 def build_plan(user_message: str, session_state):
     text = user_message.lower()
 
-    if any(word in text for word in ["ชื่ออะไร", "ชื่อว่า", "ชื่อฉัน"]):
+    if any(word in text for word in [
+        "ชื่ออะไร", "ชื่อว่า", "ชื่อฉัน", "ชื่อเรา",
+        "ชื่อไร", "ชื่อของฉัน", "ชื่อของเรา",
+        "จำชื่อ", "รู้ชื่อ",
+    ]):
         return {
             "goal": "memory_lookup",
             "tool": "check_memory",
             "arguments": {"key": "name"}
         }
 
-    if any(word in text for word in ["ชอบอะไร", "ชอบอะไรบ้าง"]):
+    if any(word in text for word in [
+        "ชอบอะไร", "ชอบอะไรบ้าง", "ชอบไร",
+        "จำได้ไหมว่าชอบ", "รู้ว่าชอบ",
+    ]):
         return {
             "goal": "memory_lookup",
             "tool": "check_memory",
             "arguments": {"key": "likes"}
         }
 
-    if any(word in text for word in ["จำได้ไหม", "จำอะไรได้"]):
+    if any(word in text for word in ["จำได้ไหม", "จำอะไรได้", "จำเรื่องอะไร"]):
         return {
             "goal": "memory_lookup",
             "tool": "check_memory",

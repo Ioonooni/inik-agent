@@ -42,6 +42,8 @@ from auth_manager import login_or_create_user
 from planner import build_plan, explain_plan
 from agent_tools import list_available_tools, run_tool
 from prompt_builder import build_main_prompt
+from autonomous import run_autonomous_check
+from autonomous_scheduler import should_run_autonomous_check, mark_autonomous_run
 
 
 st.set_page_config(
@@ -213,10 +215,26 @@ def init_user_session():
         )
         st.session_state.visit_registered = True
 
-    st.session_state.intimacy_score = st.session_state.persistent_memory.get(
-        "intimacy_score",
-        0
-    )
+    raw_intimacy = st.session_state.persistent_memory.get("intimacy_score", 0)
+
+    last_date_str = st.session_state.persistent_memory.get(
+        "user_profile", {}
+    ).get("last_interaction_date")
+
+    if last_date_str:
+        try:
+            from datetime import datetime, timezone as _tz
+            last_date = datetime.fromisoformat(last_date_str)
+            if last_date.tzinfo is None:
+                last_date = last_date.replace(tzinfo=_tz.utc)
+            days_inactive = (datetime.now(_tz.utc) - last_date).days
+            if days_inactive > 7:
+                decay = min(raw_intimacy, (days_inactive // 7) * 5)
+                raw_intimacy = max(0, raw_intimacy - decay)
+        except Exception:
+            pass
+
+    st.session_state.intimacy_score = raw_intimacy
 
     st.session_state.points = st.session_state.persistent_memory.get(
         "points",
@@ -413,7 +431,8 @@ def main_app():
 
         if st.session_state.user_facts:
             for key, value in st.session_state.user_facts.items():
-                st.write(f"{key}: {value}")
+                if not key.startswith("_"):
+                    st.write(f"{key}: {value}")
         else:
             st.write("ยังไม่มีข้อมูลที่จำได้")
 
@@ -751,6 +770,7 @@ def main_app():
                     user_facts=st.session_state.user_facts,
                     rag_context=rag_context,
                     user_message=user_message,
+                    relationship_state=st.session_state.relationship_state,
                 )
 
                 try:
@@ -792,6 +812,16 @@ def main_app():
             })
 
         persist_current_state()
+
+        if should_run_autonomous_check(st.session_state):
+            auto_result = run_autonomous_check(st.session_state, model=model)
+            mark_autonomous_run(st.session_state)
+            auto_msg = auto_result.get("decision", {}).get("message")
+            if auto_msg:
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": auto_msg
+                })
 
         event_result = send_event_to_n8n(
             "user_message",

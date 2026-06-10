@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 def should_run_autonomous_check(session_state):
@@ -7,10 +7,10 @@ def should_run_autonomous_check(session_state):
     if last_run is None:
         return True
 
-    elapsed = datetime.utcnow() - last_run
+    elapsed = datetime.now(timezone.utc) - last_run
 
     return elapsed >= timedelta(minutes=5)
 
 
 def mark_autonomous_run(session_state):
-    session_state["last_autonomous_run"] = datetime.utcnow()
+    session_state["last_autonomous_run"] = datetime.now(timezone.utc)
