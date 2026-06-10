@@ -26,7 +26,7 @@ assert meal.should_store is False, meal
 
 normal = classify("วันนี้กินข้าวไข่เจียวตอน 13:17 น.", facts)
 reply = build_runtime_fallback("วันนี้กินข้าวไข่เจียวตอน 13:17 น.", normal)
-assert "ลองถามใหม่" not in reply
+assert "ลองถามใหม่" not in reply and "เชื่อมต่อ Gemini" not in reply
 assert "ความจำ" in reply or "รับรู้" in reply
 
 print("RUNTIME FALLBACK TESTS PASSED")
