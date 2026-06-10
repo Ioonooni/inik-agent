@@ -4,3 +4,6 @@ __pycache__/
 
 # Temporary test artifacts
 tmp_memory_store_v2_test.json
+
+# Local memory fallback store
+memory_store_v2.json
