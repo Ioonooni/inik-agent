@@ -6,6 +6,7 @@ from character import CHARACTER_BIBLE
 from memory import build_chat_history
 from rag_prompt import build_safe_rag_context
 from rag_memory import save_memory_note
+from autonomous import run_autonomous_check
 from rag_answer import build_natural_rag_reply
 from facts import extract_facts, answer_from_facts
 from rewards import check_reward
@@ -391,6 +392,28 @@ def render_agent_tools_panel():
         st.write("Last Tool Result")
         st.json(st.session_state.last_agent_tool_result)
 
+def render_autonomous_panel():
+    st.divider()
+    st.subheader("🤖 Autonomous Check")
+
+    if st.button("Run Autonomous Check", use_container_width=True):
+        autonomous_result = run_autonomous_check(st.session_state)
+        st.session_state.last_autonomous_result = autonomous_result
+
+        decision = autonomous_result.get("decision", {})
+        message = decision.get("message")
+
+        if message:
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": message
+            })
+
+        st.rerun()
+
+    if st.session_state.get("last_autonomous_result"):
+        st.write("Last Autonomous Result")
+        st.json(st.session_state.last_autonomous_result)
 
 def main_app():
     user_id = st.session_state.get("user_id")
@@ -604,6 +627,7 @@ def main_app():
                 st.write(f"{icon} {check['name']}: {check['detail']}")
 
         render_agent_tools_panel()
+        render_autonomous_panel()
 
     st.title("🧚 i nik ◧")
     st.caption(f"สวัสดี, {username}! i nik จำคุณได้...")
