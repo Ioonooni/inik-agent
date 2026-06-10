@@ -1,4 +1,5 @@
 import streamlit as st
+from memory_direct_answer import answer_direct_memory_recall
 import google.generativeai as genai
 
 from behavior import get_stage, get_stage_description
@@ -809,6 +810,15 @@ def main_app():
             "direct_answer": classification.direct_answer,
             "rag_preview": route_decision.rag_context[:60],
         }
+
+        
+        direct_memory_reply = answer_direct_memory_recall(
+            user_message,
+            st.session_state.user_facts,
+            raw_memories,
+        )
+        if direct_memory_reply:
+            route_decision.direct_reply = direct_memory_reply
 
         # 5. Execute routing decision
         # Direct deterministic / structured answers must win.
