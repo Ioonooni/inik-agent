@@ -1,3 +1,6 @@
 .streamlit/secrets.toml
 __pycache__/
 __pycache__/
+
+# Temporary test artifacts
+tmp_memory_store_v2_test.json
