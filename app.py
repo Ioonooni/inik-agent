@@ -919,6 +919,10 @@ def main_app():
                     response = model.generate_content(prompt)
                     reply = response.text
         except Exception as e:
+            error_text = repr(e)
+            print("GEMINI ERROR:", error_text)
+            st.session_state.last_gemini_error = error_text
+            st.sidebar.error(f"Gemini error: {error_text[:180]}")
                 reply = build_fallback_reply(
                     str(e),
                     user_message,
