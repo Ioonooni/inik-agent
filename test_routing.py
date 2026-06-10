@@ -369,7 +369,8 @@ def test_factual_never_memory_recall() -> None:
     ]
     verified = verify(echo_entries)
 
-    for msg in ["หลุมดำคืออะไร", "อธิบายควอนตัม", "2+2 เท่ากับอะไร", "โลกกลมไหม"]:
+    # Non-arithmetic factual queries: Gemini answers, no RAG memory injected
+    for msg in ["หลุมดำคืออะไร", "อธิบายควอนตัม", "โลกกลมไหม"]:
         c = classify(msg, facts)
         decision = route(
             classification=c,
@@ -391,6 +392,35 @@ def test_factual_never_memory_recall() -> None:
             f'"{msg}" must not have a direct_reply',
             decision.direct_reply is None,
             f"got direct_reply={decision.direct_reply}",
+        )
+
+    # Arithmetic factual queries: answered deterministically without Gemini
+    arith_cases = [
+        ("2+2 เท่ากับอะไร", "4"),
+        ("2+2 เท่ากับเท่าไหร่", "4"),
+    ]
+    for msg, expected in arith_cases:
+        c2 = classify(msg, facts)
+        d2 = route(
+            classification=c2,
+            user_facts=facts,
+            planner_result=None,
+            verified_memories=verified,
+        )
+        _check(
+            f'"{msg}" must be STRUCTURED_MEMORY (deterministic)',
+            d2.route_type == RouteType.STRUCTURED_MEMORY,
+            f"got {d2.route_type}",
+        )
+        _check(
+            f'"{msg}" direct_reply must be "{expected}"',
+            d2.direct_reply == expected,
+            f"got {d2.direct_reply}",
+        )
+        _check(
+            f'"{msg}" must not inject เธอเคยพูดว่า',
+            "เธอเคยพูดว่า" not in d2.rag_context,
+            f"rag_context={d2.rag_context}",
         )
 
 

@@ -533,6 +533,20 @@ def main_app():
             value=False
         )
 
+        if use_dev_test_mode:
+            debug = st.session_state.get("last_route_debug")
+            if debug:
+                st.caption("Last route (dev)")
+                st.code(
+                    f"query_type: {debug.get('query_type')}\n"
+                    f"route_type: {debug.get('route_type')}\n"
+                    f"live_data:  {debug.get('requires_live_data')}\n"
+                    f"direct_ans: {debug.get('can_answer_directly')}\n"
+                    f"answer:     {debug.get('direct_answer')}\n"
+                    f"rag:        {debug.get('rag_preview')}",
+                    language="yaml",
+                )
+
         memory_status = get_memory_status()
 
         st.divider()
@@ -707,6 +721,15 @@ def main_app():
             planner_result=planner_result,
             verified_memories=verified,
         )
+
+        st.session_state.last_route_debug = {
+            "query_type": classification.query_type,
+            "route_type": route_decision.route_type,
+            "requires_live_data": classification.requires_live_data,
+            "can_answer_directly": classification.can_answer_directly,
+            "direct_answer": classification.direct_answer,
+            "rag_preview": route_decision.rag_context[:60],
+        }
 
         # 5. Execute routing decision
         if route_decision.route_type == RouteType.STRUCTURED_MEMORY:

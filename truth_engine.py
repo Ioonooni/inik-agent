@@ -1,3 +1,5 @@
+import ast
+import operator
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
@@ -61,8 +63,62 @@ _RELATIONSHIP_WORDS = (
     "รู้สึกไงกับฉัน", "ชอบฉันไหม",
 )
 
-# Simple math expression
+# Simple math expression — whole text is pure arithmetic
 _MATH_RE = re.compile(r'^[\d\s\+\-\*\/\=\(\)\.]+$')
+
+# Extract arithmetic sub-expression from text that may also contain Thai words
+_MATH_EXPR_RE = re.compile(r'[\d\.]+(?:\s*[\+\-\*\/]\s*[\d\.]+)+')
+
+_MATH_OPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
+
+
+def _eval_ast_node(node):
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return node.value
+    if isinstance(node, ast.BinOp) and type(node.op) in _MATH_OPS:
+        return _MATH_OPS[type(node.op)](_eval_ast_node(node.left), _eval_ast_node(node.right))
+    if isinstance(node, ast.UnaryOp) and type(node.op) in _MATH_OPS:
+        return _MATH_OPS[type(node.op)](_eval_ast_node(node.operand))
+    raise ValueError(f"unsupported node: {type(node)}")
+
+
+def _try_eval_math(text: str) -> Optional[str]:
+    """Extract and evaluate the first arithmetic expression in text.
+    Uses AST — no eval() call. Returns string result or None."""
+    stripped = text.strip()
+    candidates = []
+
+    # If the whole text is pure math, try it first
+    if _MATH_RE.match(stripped):
+        candidates.append(stripped)
+
+    # Also try extracting a sub-expression (e.g. "2+2" from "2+2 เท่ากับเท่าไหร่")
+    for m in _MATH_EXPR_RE.finditer(stripped):
+        candidates.append(m.group(0).strip())
+
+    for expr in candidates:
+        if not expr:
+            continue
+        try:
+            tree = ast.parse(expr, mode="eval")
+            result = _eval_ast_node(tree.body)
+            if isinstance(result, float) and result == int(result):
+                result = int(result)
+            # Reject absurd or complex results
+            if isinstance(result, (int, float)) and abs(result) <= 1e15:
+                return str(result)
+        except Exception:
+            continue
+    return None
 
 
 class QueryType:
@@ -80,6 +136,7 @@ class QueryClassification:
     memory_key: Optional[str] = None
     requires_live_data: bool = False
     can_answer_directly: bool = False
+    direct_answer: Optional[str] = None
 
 
 def _detect_memory_key(text: str) -> Optional[str]:
@@ -138,11 +195,13 @@ def classify(user_message: str, user_facts: Dict[str, Any]) -> QueryClassificati
 
     # 5. Knowledge / factual question — Gemini knows this from training
     if any(v in text for v in _KNOWLEDGE_VERBS) or _MATH_RE.match(text):
+        math_result = _try_eval_math(text)
         return QueryClassification(
             query_type=QueryType.FACTUAL_QUERY,
             confidence=MemoryConfidence.HIGH,
             requires_live_data=False,
-            can_answer_directly=False,
+            can_answer_directly=math_result is not None,
+            direct_answer=math_result,
         )
 
     # 6. Default — regular conversation

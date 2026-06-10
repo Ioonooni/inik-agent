@@ -78,8 +78,14 @@ def route(
             live_data_warning=_LIVE_DATA_WARNING,
         )
 
-    # Factual / knowledge — Gemini answers from training, no user memory relevant
+    # Factual / knowledge — answer directly if deterministic (e.g. arithmetic), else Gemini
     if classification.query_type == QueryType.FACTUAL_QUERY:
+        if classification.can_answer_directly and classification.direct_answer is not None:
+            return RouteDecision(
+                route_type=RouteType.STRUCTURED_MEMORY,
+                direct_reply=classification.direct_answer,
+                rag_context=_NO_RAG,
+            )
         return RouteDecision(
             route_type=RouteType.GEMINI_NO_MEMORY,
             rag_context=_NO_RAG,
