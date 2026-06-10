@@ -8,6 +8,7 @@ from rag_prompt import build_safe_rag_context, get_raw_memories
 from rag_memory import save_memory_note
 from truth_engine import classify as classify_query, QueryType
 from memory_verifier import verify as verify_memories
+from memory_quality import assess_memory_quality
 from response_router import route as route_response, RouteType
 from facts import extract_facts, answer_from_facts
 from rewards import check_reward
@@ -710,10 +711,14 @@ def main_app():
 
         if should_save_rag_user_message(user_message, classification):
             try:
-                save_memory_note(
+                quality = assess_memory_quality(user_message)
+
+                if quality.should_store:
+
+                    save_memory_note(
                     user_id=user_id,
                     content=user_message,
-                    memory_type="user_message"
+                    memory_type=quality.memory_type
                 )
             except Exception as error:
                 print("[RAG SAVE ERROR]", error)
