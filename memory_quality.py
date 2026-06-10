@@ -33,6 +33,9 @@ PERSONAL_FACT_PREFIXES = (
     "ฉันเกิด", "วันเกิดฉัน", "ฉันอยู่",
 )
 
+# Possession + named-entity patterns: "ฉันมีนกชื่อโมจิ", "ผมมีแมวชื่อมิ้ว"
+_POSSESSION_PREFIXES = ("ฉันมี", "ผมมี", "หนูมี", "เรามี")
+
 EMOTIONAL_WORDS = (
     "เหนื่อย", "เศร้า", "ไม่ไหว", "พัง", "ร้องไห้",
     "ดีใจ", "กลัว", "กังวล", "เครียด", "เหงา"
@@ -61,6 +64,9 @@ def assess_memory_quality(content: str) -> MemoryQualityDecision:
 
     if any(text.startswith(prefix) for prefix in PERSONAL_FACT_PREFIXES):
         return MemoryQualityDecision(True, "user_fact", 80, "explicit personal fact/preference")
+
+    if any(text.startswith(p) for p in _POSSESSION_PREFIXES) and "ชื่อ" in text:
+        return MemoryQualityDecision(True, "user_fact", 75, "personal possession with named entity")
 
     if any(word in text for word in EMOTIONAL_WORDS):
         return MemoryQualityDecision(True, "emotional_event", 60, "emotional signal worth remembering lightly")

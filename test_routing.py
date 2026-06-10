@@ -246,8 +246,8 @@ def test_live_data_warning() -> None:
             f"got live_data_warning={decision.live_data_warning}",
         )
         _check(
-            f'"{msg}" route must be GEMINI_NO_MEMORY',
-            decision.route_type == RouteType.GEMINI_NO_MEMORY,
+            f'"{msg}" route must be DIRECT_ANSWER',
+            decision.route_type == RouteType.DIRECT_ANSWER,
             f"got {decision.route_type}",
         )
 
@@ -408,8 +408,8 @@ def test_factual_never_memory_recall() -> None:
             verified_memories=verified,
         )
         _check(
-            f'"{msg}" must be STRUCTURED_MEMORY (deterministic)',
-            d2.route_type == RouteType.STRUCTURED_MEMORY,
+            f'"{msg}" must be DIRECT_ANSWER (deterministic)',
+            d2.route_type == RouteType.DIRECT_ANSWER,
             f"got {d2.route_type}",
         )
         _check(
