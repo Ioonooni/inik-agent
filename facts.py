@@ -1,4 +1,16 @@
 import re
+from datetime import datetime, timezone
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _record_history(facts: dict, key: str, value: str) -> None:
+    hist = facts.setdefault("_history", {})
+    entries = hist.setdefault(key, [])
+    entries.append({"value": value, "ts": _now_iso()})
+    hist[key] = entries[-5:]
 
 
 def clean_value(value):
@@ -30,7 +42,6 @@ def extract_facts(user_message, facts):
         r"เรียกเราว่า\s*([^\n,.!?]+)",
         r"ฉันคือ\s*([^\n,.!?]+)",
         r"เราคือ\s*([^\n,.!?]+)",
-        r"ชื่อ\s*([^\n,.!?]+)",
     ]
 
     for pattern in name_patterns:
@@ -57,6 +68,7 @@ def extract_facts(user_message, facts):
             and len(name) <= 30
             and name not in blocked_words
         ):
+            _record_history(facts, "name", name)
             facts["name"] = name
 
     like_patterns = [
@@ -92,6 +104,7 @@ def extract_facts(user_message, facts):
             and len(liked) <= 80
             and liked not in blocked_like_values
         ):
+            _record_history(facts, "likes", liked)
             facts["likes"] = liked
 
     return facts

@@ -4,10 +4,11 @@ import google.generativeai as genai
 from behavior import get_stage, get_stage_description
 from character import CHARACTER_BIBLE
 from memory import build_chat_history
-from rag_prompt import build_safe_rag_context
+from rag_prompt import build_safe_rag_context, get_raw_memories
 from rag_memory import save_memory_note
-from autonomous import run_autonomous_check
-from rag_answer import build_natural_rag_reply
+from truth_engine import classify as classify_query, QueryType
+from memory_verifier import verify as verify_memories
+from response_router import route as route_response, RouteType
 from facts import extract_facts, answer_from_facts
 from rewards import check_reward
 from relationship import (
@@ -44,6 +45,8 @@ from auth_manager import login_or_create_user
 from planner import build_plan, explain_plan
 from agent_tools import list_available_tools, run_tool
 from prompt_builder import build_main_prompt
+from autonomous import run_autonomous_check
+from autonomous_scheduler import should_run_autonomous_check, mark_autonomous_run
 
 
 st.set_page_config(
@@ -59,6 +62,59 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 
 USE_FAKE_AI = False
 
+QUESTION_MARKERS = (
+    "อะไร", "ไหม", "หรือ", "เหรอ", "หรอ", "ยังไง", "อย่างไร",
+    "เท่าไหร่", "เท่าไร", "กี่", "?", "คืออะไร", "เล่าเรื่อง",
+    "อธิบาย", "ทำไม", "เพราะอะไร"
+)
+
+FACT_STORE_PREFIXES = (
+    "ฉันชื่อ", "ชื่อฉันคือ", "เรา ชื่อ", "ผมชื่อ", "หนูชื่อ",
+    "ฉันชอบ", "เราชอบ", "ผมชอบ", "หนูชอบ",
+    "ฉันไม่ชอบ", "เราไม่ชอบ", "ผมไม่ชอบ", "หนูไม่ชอบ",
+)
+
+def is_question_like(text: str) -> bool:
+    clean = (text or "").strip().lower()
+    if not clean:
+        return False
+    return any(marker in clean for marker in QUESTION_MARKERS)
+
+def should_extract_structured_facts(text: str, classification=None) -> bool:
+    clean = (text or "").strip().lower()
+    if not clean:
+        return False
+
+    # Never store facts from questions. Prevents:
+    # "ฉันชอบอะไรเกี่ยวกับหลุมดำ" -> likes="อะไรเกี่ยวกับหลุมดำ"
+    if is_question_like(clean):
+        return False
+
+    return any(clean.startswith(prefix) for prefix in FACT_STORE_PREFIXES)
+
+def should_save_rag_user_message(text: str, classification=None) -> bool:
+    clean = (text or "").strip().lower()
+    if not clean:
+        return False
+
+    # Do not save query-like prompts into RAG as long-term memories.
+    # They create echo contamination later.
+    if is_question_like(clean):
+        return False
+
+    if classification and getattr(classification, "requires_live_data", False):
+        return False
+
+    if classification and getattr(classification, "query_type", None) in (
+        QueryType.FACTUAL_QUERY,
+        QueryType.TOOL_QUERY,
+        QueryType.RELATIONSHIP_QUERY,
+    ):
+        return False
+
+    return True
+
+
 
 def show_login():
     st.title("🧚 i nik")
@@ -70,43 +126,27 @@ def show_login():
     auth_mode = st.radio(
         "เลือกโหมด",
         ["Login", "Sign up", "Username demo"],
-        horizontal=True,
-        key="auth_mode_choice"
+        horizontal=True
     )
 
     if auth_mode in ["Login", "Sign up"]:
-        with st.form("email_auth_form", clear_on_submit=False):
+        with st.form(key="email_auth_form"):
             email = st.text_input(
                 "Email",
                 placeholder="you@example.com",
-                key="auth_email"
             )
-
             password = st.text_input(
                 "Password",
                 type="password",
                 placeholder="อย่างน้อย 6 ตัวอักษร",
-                key="auth_password"
             )
-
             submitted = st.form_submit_button(
                 auth_mode,
                 type="primary",
-                use_container_width=True
+                use_container_width=True,
             )
 
         if submitted:
-            email = (email or st.session_state.get("auth_email", "")).strip()
-            password = password or st.session_state.get("auth_password", "")
-
-            if not email:
-                st.error("กรุณาใส่อีเมล")
-                return
-
-            if not password:
-                st.error("กรุณาใส่รหัสผ่าน")
-                return
-
             try:
                 if auth_mode == "Login":
                     from auth_manager import login_with_email
@@ -126,27 +166,23 @@ def show_login():
                 st.error(f"{auth_mode} ไม่สำเร็จ: {e}")
 
     else:
-        with st.form("username_demo_form", clear_on_submit=False):
+        with st.form(key="username_demo_form"):
             username = st.text_input(
                 "ชื่อผู้ใช้",
                 placeholder="เช่น aiuun, nik_lover",
-                key="login_username"
             )
-
             submitted = st.form_submit_button(
                 "เข้าสู่ระบบแบบ demo",
                 type="primary",
-                use_container_width=True
+                use_container_width=True,
             )
 
         if submitted:
-            username = (
-                username or st.session_state.get("login_username", "")
-            ).strip().lower()
-
-            if not username or len(username) < 2:
+            if not username or len(username.strip()) < 2:
                 st.error("กรุณาใส่ชื่ออย่างน้อย 2 ตัวอักษร")
                 return
+
+            username = username.strip().lower()
 
             try:
                 user = login_or_create_user(username)
@@ -163,6 +199,7 @@ def show_login():
 
             except Exception as e:
                 st.error(f"เข้าสู่ระบบไม่สำเร็จ: {e}")
+
 
 def clear_runtime_state_for_user_switch():
     keys_to_clear = [
@@ -234,10 +271,26 @@ def init_user_session():
         )
         st.session_state.visit_registered = True
 
-    st.session_state.intimacy_score = st.session_state.persistent_memory.get(
-        "intimacy_score",
-        0
-    )
+    raw_intimacy = st.session_state.persistent_memory.get("intimacy_score", 0)
+
+    last_date_str = st.session_state.persistent_memory.get(
+        "user_profile", {}
+    ).get("last_interaction_date")
+
+    if last_date_str:
+        try:
+            from datetime import datetime, timezone as _tz
+            last_date = datetime.fromisoformat(last_date_str)
+            if last_date.tzinfo is None:
+                last_date = last_date.replace(tzinfo=_tz.utc)
+            days_inactive = (datetime.now(_tz.utc) - last_date).days
+            if days_inactive > 7:
+                decay = min(raw_intimacy, (days_inactive // 7) * 5)
+                raw_intimacy = max(0, raw_intimacy - decay)
+        except Exception:
+            pass
+
+    st.session_state.intimacy_score = raw_intimacy
 
     st.session_state.points = st.session_state.persistent_memory.get(
         "points",
@@ -392,28 +445,6 @@ def render_agent_tools_panel():
         st.write("Last Tool Result")
         st.json(st.session_state.last_agent_tool_result)
 
-def render_autonomous_panel():
-    st.divider()
-    st.subheader("🤖 Autonomous Check")
-
-    if st.button("Run Autonomous Check", use_container_width=True):
-        autonomous_result = run_autonomous_check(st.session_state)
-        st.session_state.last_autonomous_result = autonomous_result
-
-        decision = autonomous_result.get("decision", {})
-        message = decision.get("message")
-
-        if message:
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": message
-            })
-
-        st.rerun()
-
-    if st.session_state.get("last_autonomous_result"):
-        st.write("Last Autonomous Result")
-        st.json(st.session_state.last_autonomous_result)
 
 def main_app():
     user_id = st.session_state.get("user_id")
@@ -456,7 +487,8 @@ def main_app():
 
         if st.session_state.user_facts:
             for key, value in st.session_state.user_facts.items():
-                st.write(f"{key}: {value}")
+                if not key.startswith("_"):
+                    st.write(f"{key}: {value}")
         else:
             st.write("ยังไม่มีข้อมูลที่จำได้")
 
@@ -554,6 +586,20 @@ def main_app():
             value=False
         )
 
+        if use_dev_test_mode:
+            debug = st.session_state.get("last_route_debug")
+            if debug:
+                st.caption("Last route (dev)")
+                st.code(
+                    f"query_type: {debug.get('query_type')}\n"
+                    f"route_type: {debug.get('route_type')}\n"
+                    f"live_data:  {debug.get('requires_live_data')}\n"
+                    f"direct_ans: {debug.get('can_answer_directly')}\n"
+                    f"answer:     {debug.get('direct_answer')}\n"
+                    f"rag:        {debug.get('rag_preview')}",
+                    language="yaml",
+                )
+
         memory_status = get_memory_status()
 
         st.divider()
@@ -627,7 +673,6 @@ def main_app():
                 st.write(f"{icon} {check['name']}: {check['detail']}")
 
         render_agent_tools_panel()
-        render_autonomous_panel()
 
     st.title("🧚 i nik ◧")
     st.caption(f"สวัสดี, {username}! i nik จำคุณได้...")
@@ -645,14 +690,18 @@ def main_app():
             "content": user_message
         })
 
-        try:
-            save_memory_note(
-                user_id=user_id,
-                content=user_message,
-                memory_type="user_message"
-            )
-        except Exception as error:
-            print("[RAG SAVE ERROR]", error)
+        # Classify before saving anything so questions do not poison memory/RAG.
+        classification = classify_query(user_message, st.session_state.user_facts)
+
+        if should_save_rag_user_message(user_message, classification):
+            try:
+                save_memory_note(
+                    user_id=user_id,
+                    content=user_message,
+                    memory_type="user_message"
+                )
+            except Exception as error:
+                print("[RAG SAVE ERROR]", error)
 
         st.session_state.intimacy_score = min(
             100,
@@ -663,10 +712,11 @@ def main_app():
 
         reward = check_reward(st.session_state.points)
 
-        st.session_state.user_facts = extract_facts(
-            user_message,
-            st.session_state.user_facts
-        )
+        if should_extract_structured_facts(user_message, classification):
+            st.session_state.user_facts = extract_facts(
+                user_message,
+                st.session_state.user_facts
+            )
 
         st.session_state.user_profile = update_user_profile(
             user_message,
@@ -699,22 +749,21 @@ def main_app():
             limit=10
         )
 
-        rag_context = build_safe_rag_context(
+        # 1. Query intent was classified before memory writes.
+
+        # 2. Fetch and verify RAG memories
+        raw_memories = get_raw_memories(
             user_id=user_id,
             user_message=user_message,
             limit=5
         )
+        verified = verify_memories(raw_memories)
 
-
-        plan = build_plan(
-            user_message,
-            st.session_state
-        )
-
+        # 3. Run planner for tool-based intents
+        plan = build_plan(user_message, st.session_state)
         st.session_state.last_agent_plan = plan
 
         planner_result = None
-
         if plan and plan.get("tool"):
             planner_result = run_tool(
                 plan["tool"],
@@ -722,9 +771,33 @@ def main_app():
                 plan.get("arguments", {})
             )
 
-        if planner_result and planner_result.get("ok"):
+        # 4. Route to the correct response strategy
+        route_decision = route_response(
+            classification=classification,
+            user_facts=st.session_state.user_facts,
+            planner_result=planner_result,
+            verified_memories=verified,
+        )
 
-            if planner_result["tool"] == "check_memory":
+        st.session_state.last_route_debug = {
+            "query_type": classification.query_type,
+            "route_type": route_decision.route_type,
+            "requires_live_data": classification.requires_live_data,
+            "can_answer_directly": classification.can_answer_directly,
+            "direct_answer": classification.direct_answer,
+            "rag_preview": route_decision.rag_context[:60],
+        }
+
+        # 5. Execute routing decision
+        # Direct deterministic / structured answers must win.
+        # This prevents Gemini from overwriting answers like 2+2 -> 4.
+        if route_decision.direct_reply is not None:
+            reply = route_decision.direct_reply
+
+        elif route_decision.route_type == RouteType.TOOL_ANSWER and planner_result and planner_result.get("ok"):
+            tool_name = planner_result.get("tool")
+
+            if tool_name == "check_memory":
                 facts = planner_result.get("facts", {})
                 value = planner_result.get("value")
                 key = planner_result.get("key")
@@ -737,34 +810,31 @@ def main_app():
                     else:
                         reply = f"เท่าที่ฉันจำได้ {key} คือ {value}"
                 elif facts:
-                    facts_text = ", ".join(f"{k}: {v}" for k, v in facts.items()) if isinstance(facts, dict) else str(facts)
-                    reply = f"เท่าที่ฉันจำได้เกี่ยวกับเธอ: {facts_text}"
+                    clean_facts = {k: v for k, v in facts.items() if isinstance(facts, dict) and not k.startswith("_")}
+                    facts_text = ", ".join(f"{k}: {v}" for k, v in clean_facts.items())
+                    reply = f"เท่าที่ฉันจำได้เกี่ยวกับเธอ: {facts_text}" if facts_text else "ฉันยังจำข้อมูลนี้ไม่ได้เลย"
                 else:
                     reply = "ฉันยังจำข้อมูลนี้ไม่ได้เลย"
 
-            elif planner_result["tool"] == "get_user_state":
+            elif tool_name == "get_user_state":
                 reply = (
                     f"ตอนนี้เธออยู่ Stage "
                     f"{planner_result.get('stage')} "
                     f"และมี {planner_result.get('points')} points"
                 )
 
-            elif planner_result["tool"] == "get_inventory":
+            elif tool_name == "get_inventory":
                 inventory = planner_result.get("inventory", [])
+                reply = f"ของที่เธอมีตอนนี้คือ {inventory}" if inventory else "ตอนนี้เธอยังไม่มีของใน inventory"
 
-                if inventory:
-                    reply = f"ของที่เธอมีตอนนี้คือ {inventory}"
-                else:
-                    reply = "ตอนนี้เธอยังไม่มีของใน inventory"
-
-            elif planner_result["tool"] == "get_relationship_state":
+            elif tool_name == "get_relationship_state":
                 reply = (
                     f"สถานะตอนนี้ trust={planner_result.get('trust')}, "
                     f"familiarity={planner_result.get('familiarity')}, "
                     f"curiosity={planner_result.get('curiosity')}"
                 )
 
-            elif planner_result["tool"] == "get_visit_count":
+            elif tool_name == "get_visit_count":
                 reply = (
                     f"เธอแวะมาทั้งหมด "
                     f"{planner_result.get('total_visits')} ครั้ง "
@@ -776,59 +846,52 @@ def main_app():
                 reply = str(planner_result)
 
         else:
-            direct_reply = answer_from_facts(
-                user_message,
-                st.session_state.user_facts
+            prompt = build_main_prompt(
+                stage_description=stage_description,
+                relationship_description=relationship_description,
+                user_profile_description=user_profile_description,
+                response_mode_description=response_mode_description,
+                chat_history=chat_history,
+                user_facts=st.session_state.user_facts,
+                rag_context=route_decision.rag_context,
+                user_message=user_message,
+                relationship_state=st.session_state.relationship_state,
+                live_data_warning=route_decision.live_data_warning,
             )
 
-            if direct_reply:
-                reply = direct_reply
-            else:
-
-
-                prompt = build_main_prompt(
-                    stage_description=stage_description,
-                    relationship_description=relationship_description,
-                    user_profile_description=user_profile_description,
-                    response_mode_description=response_mode_description,
-                    chat_history=chat_history,
-                    user_facts=st.session_state.user_facts,
-                    rag_context=rag_context,
-                    user_message=user_message,
+            _bypass_gemini = USE_FAKE_AI or (
+                use_dev_test_mode and
+                classification.query_type not in (
+                    QueryType.FACTUAL_QUERY,
+                    QueryType.NORMAL_CHAT,
                 )
+            )
 
-                try:
-                    if USE_FAKE_AI or use_dev_test_mode:
-                        analytics = calculate_analytics(st.session_state)
+            try:
+                if _bypass_gemini:
+                    analytics = calculate_analytics(st.session_state)
 
-                        reply = generate_fake_reply(
-                            user_message,
-                            stage,
-                            response_mode,
-                            st.session_state.user_facts,
-                            st.session_state.relationship_state,
-                            analytics
-                        )
-                    else:
-                        response = model.generate_content(prompt)
-                        reply = response.text
-                except Exception as e:
-                    natural_rag_reply = build_natural_rag_reply(
+                    reply = generate_fake_reply(
                         user_message,
-                        rag_context
+                        stage,
+                        response_mode,
+                        st.session_state.user_facts,
+                        st.session_state.relationship_state,
+                        analytics
                     )
-
-                    if natural_rag_reply:
-                        reply = natural_rag_reply
-                    else:
-                        reply = build_fallback_reply(
-                            str(e),
-                            user_message,
-                            stage,
-                            response_mode,
-                            st.session_state.user_facts,
-                            st.session_state.relationship_state
-                        )
+                else:
+                    response = model.generate_content(prompt)
+                    reply = response.text
+            except Exception as e:
+                reply = build_fallback_reply(
+                    str(e),
+                    user_message,
+                    stage,
+                    response_mode,
+                    st.session_state.user_facts,
+                    st.session_state.relationship_state,
+                    query_type=classification.query_type,
+                )
 
         st.session_state.messages.append({
             "role": "assistant",
@@ -844,6 +907,16 @@ def main_app():
             })
 
         persist_current_state()
+
+        if should_run_autonomous_check(st.session_state):
+            auto_result = run_autonomous_check(st.session_state, model=model)
+            mark_autonomous_run(st.session_state)
+            auto_msg = auto_result.get("decision", {}).get("message")
+            if auto_msg:
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": auto_msg
+                })
 
         event_result = send_event_to_n8n(
             "user_message",
