@@ -812,10 +812,21 @@ def main_app():
         }
 
         
+        recall_memories = list(raw_memories or [])
+        try:
+            broader_memories = get_raw_memories(
+                user_id=user_id,
+                user_message="",
+                limit=50,
+            )
+            recall_memories.extend(broader_memories or [])
+        except Exception:
+            pass
+
         direct_memory_reply = answer_direct_memory_recall(
             user_message,
             st.session_state.user_facts,
-            raw_memories,
+            recall_memories,
         )
         if direct_memory_reply:
             route_decision.direct_reply = direct_memory_reply

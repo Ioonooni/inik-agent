@@ -107,6 +107,11 @@ def extract_facts(user_message, facts):
             _record_history(facts, "likes", liked)
             facts["likes"] = liked
 
+
+    pet_match = re.search(r"(?:ฉันมีนกชื่อ|นกชื่อ|ฉันมีสัตว์เลี้ยงชื่อ|สัตว์เลี้ยงชื่อ)\s*([ก-๙A-Za-z0-9_\-]+)", text)
+    if pet_match:
+        facts["pet_name"] = pet_match.group(1).strip()
+
     return facts
 
 
