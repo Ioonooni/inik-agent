@@ -31,7 +31,8 @@ class RouteDecision:
     live_data_warning: Optional[str] = None
 
 
-def _format_verified_rag(memories: List[VerifiedMemory]) -> str:
+def _format_memory_rag(memories: List[VerifiedMemory]) -> str:
+    """For MEMORY_QUERY: include facts, preferences, events; exclude echoes."""
     usable = [
         m for m in memories
         if m.confidence in (MemoryConfidence.HIGH, MemoryConfidence.MEDIUM)
@@ -46,6 +47,22 @@ def _format_verified_rag(memories: List[VerifiedMemory]) -> str:
     return f"เธอเคยพูดว่า: {quoted}"
 
 
+def _format_chat_rag(memories: List[VerifiedMemory]) -> str:
+    """For NORMAL_CHAT: only genuine user facts and preferences, never echoes or inferences."""
+    usable = [
+        m for m in memories
+        if m.confidence in (MemoryConfidence.HIGH, MemoryConfidence.MEDIUM)
+        and m.entry_type in (EntryType.USER_FACT, EntryType.PREFERENCE)
+    ]
+
+    if not usable:
+        return _NO_RAG
+
+    lines = [m.content[:200] for m in usable[:2]]
+    quoted = " / ".join(f'"{line}"' for line in lines)
+    return f"เธอเคยพูดว่า: {quoted}"
+
+
 def route(
     classification: QueryClassification,
     user_facts: Dict[str, Any],
@@ -53,6 +70,7 @@ def route(
     verified_memories: List[VerifiedMemory],
 ) -> RouteDecision:
 
+    # Live data — Gemini gets warning, no RAG injection
     if classification.requires_live_data:
         return RouteDecision(
             route_type=RouteType.GEMINI_NO_MEMORY,
@@ -60,6 +78,14 @@ def route(
             live_data_warning=_LIVE_DATA_WARNING,
         )
 
+    # Factual / knowledge — Gemini answers from training, no user memory relevant
+    if classification.query_type == QueryType.FACTUAL_QUERY:
+        return RouteDecision(
+            route_type=RouteType.GEMINI_NO_MEMORY,
+            rag_context=_NO_RAG,
+        )
+
+    # Tool query — answered by planner
     if classification.query_type == QueryType.TOOL_QUERY:
         if planner_result and planner_result.get("ok"):
             return RouteDecision(
@@ -67,6 +93,15 @@ def route(
                 rag_context=_NO_RAG,
             )
 
+    # Relationship query — answered by planner
+    if classification.query_type == QueryType.RELATIONSHIP_QUERY:
+        if planner_result and planner_result.get("ok"):
+            return RouteDecision(
+                route_type=RouteType.TOOL_ANSWER,
+                rag_context=_NO_RAG,
+            )
+
+    # Explicit memory query with a direct fact available — bypass Gemini
     if classification.query_type == QueryType.MEMORY_QUERY and classification.can_answer_directly:
         memory_key = classification.memory_key
         value = user_facts.get(memory_key) if memory_key else None
@@ -85,21 +120,16 @@ def route(
                 rag_context=_NO_RAG,
             )
 
+    # Explicit memory query without a direct fact — use verified RAG context for Gemini
     if classification.query_type == QueryType.MEMORY_QUERY:
-        rag = _format_verified_rag(verified_memories)
+        rag = _format_memory_rag(verified_memories)
         return RouteDecision(
             route_type=RouteType.GEMINI_WITH_CONTEXT,
             rag_context=rag,
         )
 
-    if classification.query_type == QueryType.RELATIONSHIP_QUERY:
-        if planner_result and planner_result.get("ok"):
-            return RouteDecision(
-                route_type=RouteType.TOOL_ANSWER,
-                rag_context=_NO_RAG,
-            )
-
-    rag = _format_verified_rag(verified_memories)
+    # Normal chat — only inject genuine user facts/preferences as background context
+    rag = _format_chat_rag(verified_memories)
 
     if rag != _NO_RAG:
         return RouteDecision(
