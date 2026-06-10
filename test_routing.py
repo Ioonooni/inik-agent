@@ -253,6 +253,148 @@ def test_live_data_warning() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 8. Normal chat queries must route to Gemini (not memory)
+# ---------------------------------------------------------------------------
+def test_normal_chat_routing() -> None:
+    print("\n=== Normal chat must route to GEMINI_NO_MEMORY or GEMINI_WITH_CONTEXT ===")
+
+    cases = ["เหนื่อยอะ", "คุยเล่นหน่อย", "เศร้าอะ"]
+
+    for msg in cases:
+        c = classify(msg, {})
+        _check(
+            f'"{msg}" must be NORMAL_CHAT',
+            c.query_type == QueryType.NORMAL_CHAT,
+            f"got {c.query_type}",
+        )
+        decision = route(
+            classification=c,
+            user_facts={},
+            planner_result=None,
+            verified_memories=[],
+        )
+        _check(
+            f'"{msg}" must not be STRUCTURED_MEMORY',
+            decision.route_type != RouteType.STRUCTURED_MEMORY,
+            f"got {decision.route_type}",
+        )
+        _check(
+            f'"{msg}" direct_reply must be None',
+            decision.direct_reply is None,
+            f"got direct_reply={decision.direct_reply}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# 9. Tool / state queries use planner result (not Gemini memory)
+# ---------------------------------------------------------------------------
+def test_tool_queries_use_planner() -> None:
+    print("\n=== Tool queries must route to TOOL_ANSWER with planner result ===")
+
+    tool_cases = [
+        ("สถานะของฉัน", {"ok": True, "tool": "get_user_state", "stage": "2", "points": 10}),
+        ("คะแนนของฉันเท่าไร", {"ok": True, "tool": "get_user_state", "stage": "1", "points": 5}),
+        ("ฉันมีของรางวัลอะไรบ้าง", {"ok": True, "tool": "get_inventory", "inventory": ["star"]}),
+    ]
+
+    for msg, mock_result in tool_cases:
+        c = classify(msg, {})
+        _check(
+            f'"{msg}" must be TOOL_QUERY',
+            c.query_type == QueryType.TOOL_QUERY,
+            f"got {c.query_type}",
+        )
+        decision = route(
+            classification=c,
+            user_facts={},
+            planner_result=mock_result,
+            verified_memories=[],
+        )
+        _check(
+            f'"{msg}" must route to TOOL_ANSWER',
+            decision.route_type == RouteType.TOOL_ANSWER,
+            f"got {decision.route_type}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# 10. Relationship query routes to TOOL_ANSWER with planner result
+# ---------------------------------------------------------------------------
+def test_relationship_query_routing() -> None:
+    print("\n=== Relationship queries must route to TOOL_ANSWER ===")
+
+    cases = [
+        "ความสัมพันธ์ตอนนี้เป็นไง",
+        "ความสนิทของเราเป็นยังไง",
+    ]
+
+    mock_result = {
+        "ok": True,
+        "tool": "get_relationship_state",
+        "trust": 30,
+        "familiarity": 20,
+        "curiosity": 10,
+    }
+
+    for msg in cases:
+        c = classify(msg, {})
+        _check(
+            f'"{msg}" must be RELATIONSHIP_QUERY',
+            c.query_type == QueryType.RELATIONSHIP_QUERY,
+            f"got {c.query_type}",
+        )
+        decision = route(
+            classification=c,
+            user_facts={},
+            planner_result=mock_result,
+            verified_memories=[],
+        )
+        _check(
+            f'"{msg}" must route to TOOL_ANSWER',
+            decision.route_type == RouteType.TOOL_ANSWER,
+            f"got {decision.route_type}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# 11. Factual queries never return memory recall text
+# ---------------------------------------------------------------------------
+def test_factual_never_memory_recall() -> None:
+    print("\n=== Factual queries must never return memory-recall context ===")
+
+    facts = {"name": "ธัญ", "likes": "กาแฟ"}
+    echo_entries = [
+        {"content": "หลุมดำคืออะไร", "memory_type": "conversation_fact"},
+        {"content": "อธิบายควอนตัม", "memory_type": "conversation_fact"},
+    ]
+    verified = verify(echo_entries)
+
+    for msg in ["หลุมดำคืออะไร", "อธิบายควอนตัม", "2+2 เท่ากับอะไร", "โลกกลมไหม"]:
+        c = classify(msg, facts)
+        decision = route(
+            classification=c,
+            user_facts=facts,
+            planner_result=None,
+            verified_memories=verified,
+        )
+        _check(
+            f'"{msg}" must be GEMINI_NO_MEMORY',
+            decision.route_type == RouteType.GEMINI_NO_MEMORY,
+            f"got {decision.route_type}",
+        )
+        _check(
+            f'"{msg}" must not inject เธอเคยพูดว่า',
+            "เธอเคยพูดว่า" not in decision.rag_context,
+            f"rag_context={decision.rag_context}",
+        )
+        _check(
+            f'"{msg}" must not have a direct_reply',
+            decision.direct_reply is None,
+            f"got direct_reply={decision.direct_reply}",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -263,6 +405,10 @@ if __name__ == "__main__":
     test_echo_does_not_hijack_routing()
     test_structured_memory_direct_answer()
     test_live_data_warning()
+    test_normal_chat_routing()
+    test_tool_queries_use_planner()
+    test_relationship_query_routing()
+    test_factual_never_memory_recall()
 
     print(f"\n{'='*50}")
     print(f"Results: {_PASS} passed, {_FAIL} failed")

@@ -4,9 +4,16 @@ def build_fallback_reply(
     stage,
     response_mode,
     user_facts,
-    relationship_state
+    relationship_state,
+    query_type=None,
 ):
     name = user_facts.get("name", "มนุษย์")
+
+    # For factual / normal chat, never dump user state — it's irrelevant and confusing
+    if query_type in ("FACTUAL_QUERY", "NORMAL_CHAT"):
+        if "429" in error_message or "quota" in error_message.lower():
+            return "ขอโทษนะ ตอนนี้ i nik เชื่อมต่อ Gemini ไม่ได้ชั่วคราว ลองถามใหม่สักครู่นะ"
+        return "i nik ตอบไม่ได้ตอนนี้ ลองถามใหม่อีกทีนะ"
 
     if "429" in error_message or "quota" in error_message.lower() or "TooManyRequests" in error_message:
         return (

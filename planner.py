@@ -36,7 +36,10 @@ def build_plan(user_message: str, session_state):
         "คะแนน",
         "แต้ม",
         "point",
-        "points"
+        "points",
+        "สถานะของฉัน",
+        "ดูสถานะ",
+        "สถานะตอนนี้",
     ]):
         return {
             "goal": "points_lookup",
@@ -51,6 +54,9 @@ def build_plan(user_message: str, session_state):
         "ได้รับของ",
         "ได้รับอะไร",
         "ดูของ",
+        "ของรางวัล",
+        "มีรางวัล",
+        "รางวัลที่ได้",
     ]):
         return {
             "goal": "inventory_lookup",

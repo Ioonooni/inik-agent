@@ -6,7 +6,7 @@ from character import CHARACTER_BIBLE
 from memory import build_chat_history
 from rag_prompt import build_safe_rag_context, get_raw_memories
 from rag_memory import save_memory_note
-from truth_engine import classify as classify_query
+from truth_engine import classify as classify_query, QueryType
 from memory_verifier import verify as verify_memories
 from response_router import route as route_response, RouteType
 from facts import extract_facts, answer_from_facts
@@ -777,8 +777,16 @@ def main_app():
                 live_data_warning=route_decision.live_data_warning,
             )
 
+            _bypass_gemini = USE_FAKE_AI or (
+                use_dev_test_mode and
+                classification.query_type not in (
+                    QueryType.FACTUAL_QUERY,
+                    QueryType.NORMAL_CHAT,
+                )
+            )
+
             try:
-                if USE_FAKE_AI or use_dev_test_mode:
+                if _bypass_gemini:
                     analytics = calculate_analytics(st.session_state)
 
                     reply = generate_fake_reply(
@@ -799,7 +807,8 @@ def main_app():
                     stage,
                     response_mode,
                     st.session_state.user_facts,
-                    st.session_state.relationship_state
+                    st.session_state.relationship_state,
+                    query_type=classification.query_type,
                 )
 
         st.session_state.messages.append({
