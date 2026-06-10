@@ -1,47 +1,4 @@
 
-def _pet_name_from_text(text):
-    import re
-    if not text:
-        return None
-    patterns = [
-        r"(?:แมว|หมา|สุนัข|สัตว์เลี้ยง)(?:ของฉัน|ฉัน)?ชื่อ\s*([^\s,\.!?]+)",
-        r"(?:แมว|หมา|สุนัข|สัตว์เลี้ยง)(?:ของฉัน|ฉัน)?ชื่อว่า\s*([^\s,\.!?]+)",
-        r"(?:ชื่อ(?:แมว|หมา|สุนัข|สัตว์เลี้ยง)(?:ของฉัน)?คือ)\s*([^\s,\.!?]+)",
-    ]
-    for pat in patterns:
-        m = re.search(pat, text)
-        if m:
-            return m.group(1).strip()
-    return None
-
-
-def pet_memory_direct_answer(query, facts=None, memories=None):
-    q = query or ""
-    if not any(k in q for k in ["แมว", "หมา", "สุนัข", "สัตว์เลี้ยง", "pet"]):
-        return None
-    if not any(k in q for k in ["ชื่ออะไร", "ชื่อว่าอะไร", "ชื่อ"]):
-        return None
-
-    items = []
-    if facts:
-        if isinstance(facts, dict):
-            items += list(facts.values()) + [str(facts)]
-        else:
-            items += list(facts)
-    if memories:
-        items += list(memories)
-
-    for item in items:
-        if isinstance(item, dict):
-            text = " ".join(str(v) for v in item.values())
-        else:
-            text = str(item)
-        name = _pet_name_from_text(text)
-        if name:
-            return f"สัตว์เลี้ยงของเธอชื่อ{name}"
-    return None
-
-
 import re
 from typing import Any, Dict, Iterable, Optional
 
@@ -94,11 +51,7 @@ def _find_pet_name(texts: list[str]) -> Optional[str]:
 
 
 def answer_direct_memory_recall(
-    user_message:
-    pet = pet_memory_direct_answer(query, facts, memories)
-    if pet:
-        return pet
- str,
+    user_message: str,
     user_facts: Dict[str, Any] | None = None,
     raw_memories: Iterable[Any] | None = None,
 ) -> Optional[str]:
