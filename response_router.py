@@ -71,11 +71,16 @@ def route(
     verified_memories: List[VerifiedMemory],
 ) -> RouteDecision:
 
-    # Live data — answer directly. Do not send to Gemini, because Gemini may roleplay or invent data.
+    # Live data — deterministic direct answer only.
+    # Do not send to Gemini because it may roleplay or invent current data.
     if classification.requires_live_data:
+        live_reply = classification.direct_answer
+        if not live_reply:
+            live_reply = "คำถามนี้ต้องใช้ข้อมูลสด แต่ตอนนี้ฉันยังไม่มีเครื่องมือเช็กข้อมูลสดโดยตรง"
+
         return RouteDecision(
             route_type=RouteType.DIRECT_ANSWER,
-            direct_reply=classification.direct_answer or "คำถามนี้ต้องใช้ข้อมูลสด แต่ตอนนี้ฉันยังไม่มีเครื่องมือเช็กข้อมูลสดโดยตรง",
+            direct_reply=live_reply,
             rag_context=_NO_RAG,
             live_data_warning=_LIVE_DATA_WARNING,
         )

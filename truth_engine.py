@@ -147,12 +147,7 @@ def _build_live_data_direct_answer(text: str) -> str:
         return "ฉันดูอากาศสดไม่ได้ เพราะยังไม่มีเครื่องมือ weather เชื่อมอยู่"
     if "ราคาทอง" in text:
         return "ฉันดูราคาทองแบบสดไม่ได้ เพราะยังไม่มีเครื่องมือราคาตลาดเชื่อมอยู่"
-    if "ราคาหุ้น" in text or "bitcoin" in text or "crypto" in text:
-        return "ฉันดูราคาปัจจุบันแบบสดไม่ได้ เพราะยังไม่มีเครื่องมือข้อมูลตลาดเชื่อมอยู่"
-    if "ข่าว" in text:
-        return "ฉันดูข่าวล่าสุดแบบสดไม่ได้ เพราะยังไม่มีเครื่องมือค้นข่าวเชื่อมอยู่"
     return "คำถามนี้ต้องใช้ข้อมูลสด แต่ตอนนี้ฉันยังไม่มีเครื่องมือเช็กข้อมูลสดโดยตรง"
-
 
 def _detect_memory_key(text: str) -> Optional[str]:
     if "ชื่อ" in text or "name" in text:
@@ -175,8 +170,16 @@ def classify(user_message: str, user_facts: Dict[str, Any]) -> QueryClassificati
             direct_answer=_build_live_data_direct_answer(text),
         )
 
-    # 2. Explicit memory question — user is asking about stored facts/history
-    if any(phrase in text for phrase in _EXPLICIT_MEMORY_PHRASES):
+    # 2. Explicit memory question — user is asking about stored facts/history.
+    # Guard topic-qualified questions so they do not become memory recall:
+    # "ฉันชอบอะไรเกี่ยวกับหลุมดำ" should be factual/normal, not MEMORY_QUERY.
+    memory_hit = any(phrase in text for phrase in _EXPLICIT_MEMORY_PHRASES)
+    topic_qualified_like_question = (
+        "ฉันชอบอะไร" in text
+        and any(q in text for q in ("เกี่ยวกับ", "เรื่อง", "ของ"))
+    )
+
+    if memory_hit and not topic_qualified_like_question:
         memory_key = _detect_memory_key(text)
         if memory_key and user_facts.get(memory_key):
             conf = score_fact_reliability(user_facts, memory_key)
