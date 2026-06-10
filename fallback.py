@@ -12,12 +12,12 @@ def build_fallback_reply(
     # For factual / normal chat, never dump user state — it's irrelevant and confusing
     if query_type in ("FACTUAL_QUERY", "NORMAL_CHAT"):
         if "429" in error_message or "quota" in error_message.lower():
-            return "ขอโทษนะ ตอนนี้ i nik ตอบผ่านโมเดลหลักไม่ได้ชั่วคราว ฉันจะไม่เดาข้อมูลแทนสักครู่นะ"
+            return "รับรู้แล้วนะ ฉันยังตอบแบบโมเดลหลักไม่ได้เต็มที่ตอนนี้ แต่จะไม่เดาข้อมูลหรือดึงความจำมั่ว ๆ แทน"
         return "i nik ตอบไม่ได้ตอนนี้ ฉันจะไม่เดาข้อมูลแทนอีกทีนะ"
 
     if "429" in error_message or "quota" in error_message.lower() or "TooManyRequests" in error_message:
         return (
-            f"ตอนนี้ประตูเวทของ Gemini ติดขัดนิดหน่อยนะ {name}\n\n"
+            f"ตอนนี้ประตูเวทของ โมเดลหลัก ติดขัดนิดหน่อยนะ {name}\n\n"
             "แต่ระบบของ i nik ยังจำสถานะเธออยู่\n"
             f"- Stage: {stage}\n"
             f"- Mode: {response_mode}\n"
