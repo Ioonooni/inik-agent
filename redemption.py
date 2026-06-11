@@ -5,6 +5,24 @@ from uuid import uuid4
 from user_identity import get_current_user_id
 
 
+
+def _build_redemption_effect(item):
+    if isinstance(item, dict):
+        item_type = item.get("type", "item")
+        name = item.get("name", "Unknown item")
+
+        if item_type == "story":
+            return f"i nik เล่าเรื่องเล็ก ๆ จากของชิ้นนี้ให้ฟัง: {name}"
+        if item_type == "gift":
+            return f"i nik รับของไว้แล้วดูอารมณ์ดีขึ้นนิดหนึ่ง: {name}"
+        if item_type == "material":
+            return f"เก็บ {name} ไว้เป็นวัตถุดิบลึกลับของร้านแล้ว"
+
+        return f"ใช้ {name} แล้ว"
+
+    return f"ใช้ {item} แล้ว"
+
+
 def get_redemption_history(user_profile):
     if "redemption_history" not in user_profile:
         user_profile["redemption_history"] = []
@@ -28,6 +46,7 @@ def redeem_first_inventory_item(session_state):
     record = {
         "redemption_id": str(uuid4()),
         "item": redeemed_item,
+        "effect_message": _build_redemption_effect(redeemed_item),
         "redeemed_at": datetime.now(timezone.utc).isoformat(),
         "user_id": get_current_user_id(session_state),
         "status": "redeemed"
