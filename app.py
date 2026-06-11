@@ -572,6 +572,8 @@ def main_app():
             st.caption(label)
 
         st.subheader("Inventory")
+        st.caption(f"Current points: {st.session_state.points}")
+        st.caption(f"Inventory items: {len(st.session_state.inventory)}")
 
         if st.session_state.inventory:
             for item in st.session_state.inventory:
