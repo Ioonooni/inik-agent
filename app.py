@@ -538,6 +538,16 @@ def main_app():
 
                 if purchase_result["ok"]:
                     st.success(f"Purchased: {format_reward(purchase_result['record'].get('item'))}")
+
+                    event_result = send_event_to_n8n(
+                        "reward_shop_purchase",
+                        st.session_state,
+                        extra={
+                            "purchase": purchase_result["record"],
+                        },
+                    )
+                    st.session_state.last_event_log_result = event_result
+
                     save_current_memory()
                     st.rerun()
                 else:
