@@ -128,33 +128,51 @@ def list_recent_memory_notes(
     user_id: str,
     limit: int = 10
 ) -> Dict[str, Any]:
-    client = get_supabase_client()
-
     if not user_id:
         return {"ok": False, "error": "Missing user_id", "results": []}
 
     try:
-        result = (
-            client
-            .table(TABLE_NAME)
-            .select("*")
-            .eq("user_id", user_id)
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
+        client = get_supabase_client()
+        memories = list_supabase_memories(
+            client=client,
+            user_id=user_id,
+            limit=limit,
         )
 
         return {
             "ok": True,
-            "results": result.data or []
+            "backend": "memories_v2",
+            "results": memories,
         }
 
-    except Exception as error:
-        return {
-            "ok": False,
-            "error": str(error),
-            "results": []
-        }
+    except Exception as primary_error:
+        try:
+            client = get_supabase_client()
+            result = (
+                client
+                .table(TABLE_NAME)
+                .select("*")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+
+            return {
+                "ok": True,
+                "backend": "legacy_rag_fallback",
+                "primary_error": str(primary_error),
+                "results": result.data or [],
+            }
+
+        except Exception as fallback_error:
+            return {
+                "ok": False,
+                "backend": "failed",
+                "error": str(fallback_error),
+                "primary_error": str(primary_error),
+                "results": [],
+            }
 
 
 def format_memory_context(memories: List[Dict[str, Any]]) -> str:
