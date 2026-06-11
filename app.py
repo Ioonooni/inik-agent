@@ -20,7 +20,7 @@ from relationship import (
     describe_relationship_state
 )
 from memory_gateway import load_memory, save_memory, get_memory_status
-from supabase_memory import get_redacted_supabase_url
+from supabase_memory import save_memory_to_supabase, get_redacted_supabase_url
 from analytics import calculate_analytics, get_engagement_label, get_system_summary
 from fake_ai import generate_fake_reply
 from modes import detect_response_mode, describe_response_mode
@@ -454,13 +454,14 @@ def render_agent_tools_panel():
 
 def main_app():
     def save_current_memory():
-        save_persistent_memory(
+        save_memory_to_supabase(
             st.session_state.user_facts,
             st.session_state.user_profile,
             st.session_state.inventory,
             st.session_state.intimacy_score,
             st.session_state.points,
             st.session_state.relationship_state,
+            user_id=st.session_state.get("user_id", "demo_user"),
         )
 
     user_id = st.session_state.get("user_id")
