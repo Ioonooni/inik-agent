@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from supabase_memory import get_supabase_client
+from supabase_memory_v2 import search_supabase_memories, list_supabase_memories
+from memory_ranking import rank_memories
 
 
 TABLE_NAME = "i_nik_rag_memory"
@@ -66,7 +68,6 @@ def search_memory_notes(
     query: str,
     limit: int = 5
 ) -> Dict[str, Any]:
-    client = get_supabase_client()
     cleaned_query = normalize_text(query)
 
     if not user_id:
@@ -76,28 +77,51 @@ def search_memory_notes(
         return {"ok": False, "error": "Missing query", "results": []}
 
     try:
-        result = (
-            client
-            .table(TABLE_NAME)
-            .select("*")
-            .eq("user_id", user_id)
-            .ilike("content", f"%{cleaned_query}%")
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
+        client = get_supabase_client()
+        memories = search_supabase_memories(
+            client=client,
+            user_id=user_id,
+            query=cleaned_query,
+            limit=max(limit * 3, limit),
         )
+
+        ranked = rank_memories(memories, limit=limit)
 
         return {
             "ok": True,
-            "results": result.data or []
+            "backend": "memories_v2",
+            "results": ranked,
         }
 
-    except Exception as error:
-        return {
-            "ok": False,
-            "error": str(error),
-            "results": []
-        }
+    except Exception as primary_error:
+        try:
+            client = get_supabase_client()
+            result = (
+                client
+                .table(TABLE_NAME)
+                .select("*")
+                .eq("user_id", user_id)
+                .ilike("content", f"%{cleaned_query}%")
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+
+            return {
+                "ok": True,
+                "backend": "legacy_rag_fallback",
+                "primary_error": str(primary_error),
+                "results": result.data or [],
+            }
+
+        except Exception as fallback_error:
+            return {
+                "ok": False,
+                "backend": "failed",
+                "error": str(fallback_error),
+                "primary_error": str(primary_error),
+                "results": [],
+            }
 
 
 def list_recent_memory_notes(
