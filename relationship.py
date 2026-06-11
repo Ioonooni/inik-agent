@@ -1,7 +1,27 @@
 _NEGATIVE_WORDS = {
-    "เกลียด", "น่าเบื่อ", "ห่วย", "โง่", "แย่",
-    "ไม่อยาก", "หนีไป", "ไปได้เลย", "เลิกคุย",
-    "น่ารำคาญ", "ไม่ชอบ", "เซ็ง", "หยุดได้แล้ว",
+    "เกลียด", "น่าเบื่อ", "ห่วย", "แย่", "ไม่อยาก", "ทำไม",
+    "ไม่ได้เลย", "ไร้สาระ", "เหนื่อย", "เซ็ง", "พูดได้แล้ว",
+}
+
+_EMOTIONAL_WORDS = {
+    "เศร้า", "เหงา", "เหนื่อย", "ไม่ไหว", "พัง", "ร้องไห้",
+    "กลัว", "กังวล", "เครียด", "เสียใจ", "น้อยใจ", "โดดเดี่ยว",
+    "ไม่มีใครเข้าใจ", "หนัก", "แย่มาก",
+}
+
+_PERSONAL_DISCLOSURE_WORDS = {
+    "ฉันชอบ", "ฉันไม่ชอบ", "ฉันกลัว", "ฉันอยาก", "ฉันรู้สึก",
+    "ฉันเคย", "ฉันเป็น", "ฉันเรียน", "ฉันทำงาน", "ครอบครัว",
+    "เพื่อน", "แฟน", "ชีวิต", "ความทรงจำ",
+}
+
+_REFLECTION_WORDS = {
+    "เพราะ", "รู้สึกว่า", "คิดว่า", "หมายความว่า", "จริง ๆ",
+    "บางที", "เหมือนว่า", "ฉันสงสัย", "ทำไมฉัน",
+}
+
+_PLAYFUL_WORDS = {
+    "555", "ฮ่า", "ขำ", "แซว", "กวน", "น่ารัก", "แปลกดี",
 }
 
 
@@ -13,34 +33,84 @@ def create_relationship_state():
     }
 
 
-def update_relationship_state(user_message, relationship_state):
-    text = user_message
+def _clamp(value, low=0, high=100):
+    return max(low, min(high, int(value)))
 
-    if any(word in text for word in _NEGATIVE_WORDS):
-        relationship_state["trust"] = max(0, relationship_state["trust"] - 2)
-        relationship_state["familiarity"] = max(0, relationship_state["familiarity"] - 1)
+
+def _contains_any(text, words):
+    return any(word in text for word in words)
+
+
+def update_relationship_state(user_message, relationship_state):
+    if relationship_state is None:
+        relationship_state = create_relationship_state()
+
+    text = (user_message or "").strip()
+    lowered = text.lower()
+
+    if not text:
         return relationship_state
 
-    message_length = len(user_message)
+    trust_delta = 0
+    familiarity_delta = 0
+    curiosity_delta = 0
 
-    relationship_state["familiarity"] = min(100, relationship_state["familiarity"] + 1)
+    message_length = len(text)
 
-    if message_length >= 40:
-        relationship_state["curiosity"] = min(100, relationship_state["curiosity"] + 2)
+    # Basic continued interaction. Small gain only.
+    familiarity_delta += 1
 
-    if any(word in text for word in ["ทำไม", "ชีวิต", "ความหมาย", "มนุษย์", "รู้สึก"]):
-        relationship_state["curiosity"] = min(100, relationship_state["curiosity"] + 2)
+    # Personal disclosure matters more than raw message count.
+    if _contains_any(text, _PERSONAL_DISCLOSURE_WORDS):
+        trust_delta += 3
+        familiarity_delta += 2
+        curiosity_delta += 1
 
-    if any(word in text for word in ["ฉันรู้สึก", "เหนื่อย", "เศร้า", "กลัว", "ไม่ไหว", "เสียใจ"]):
-        relationship_state["trust"] = min(100, relationship_state["trust"] + 3)
+    # Emotional vulnerability builds trust, but not too aggressively.
+    if _contains_any(text, _EMOTIONAL_WORDS):
+        trust_delta += 4
+        curiosity_delta += 1
+
+    # Reflective or meaning-making messages increase curiosity.
+    if _contains_any(text, _REFLECTION_WORDS):
+        curiosity_delta += 3
+
+    # Long messages are useful only when they contain substance.
+    if message_length >= 80:
+        curiosity_delta += 2
+        familiarity_delta += 1
+    elif message_length >= 40:
+        curiosity_delta += 1
+
+    # Playful rapport increases familiarity without forcing trust.
+    if _contains_any(lowered, _PLAYFUL_WORDS):
+        familiarity_delta += 2
+
+    # Negative/friction messages reduce warmth slightly.
+    if _contains_any(text, _NEGATIVE_WORDS):
+        trust_delta -= 2
+        familiarity_delta -= 1
+
+    relationship_state["trust"] = _clamp(
+        relationship_state.get("trust", 0) + trust_delta
+    )
+    relationship_state["familiarity"] = _clamp(
+        relationship_state.get("familiarity", 0) + familiarity_delta
+    )
+    relationship_state["curiosity"] = _clamp(
+        relationship_state.get("curiosity", 0) + curiosity_delta
+    )
 
     return relationship_state
 
 
 def describe_relationship_state(relationship_state):
-    trust = relationship_state["trust"]
-    familiarity = relationship_state["familiarity"]
-    curiosity = relationship_state["curiosity"]
+    if relationship_state is None:
+        relationship_state = create_relationship_state()
+
+    trust = relationship_state.get("trust", 0)
+    familiarity = relationship_state.get("familiarity", 0)
+    curiosity = relationship_state.get("curiosity", 0)
 
     return (
         "Relationship State:\n"
@@ -50,5 +120,5 @@ def describe_relationship_state(relationship_state):
         "Interpretation:\n"
         "- Trust = ผู้ใช้เปิดใจหรือเล่าเรื่องส่วนตัวมากแค่ไหน\n"
         "- Familiarity = คุยกันบ่อยและคุ้นกันแค่ไหน\n"
-        "- Curiosity = i nik สนใจแพทเทิร์นของผู้ใช้มากแค่ไหน"
+        "- Curiosity = i nik สนใจแพตเทิร์นของผู้ใช้มากแค่ไหน"
     )
