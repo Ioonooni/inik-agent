@@ -2,6 +2,8 @@ from rewards import get_shop_item
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from user_identity import get_current_user_id
+
 
 def get_redemption_history(user_profile):
     if "redemption_history" not in user_profile:
@@ -27,7 +29,7 @@ def redeem_first_inventory_item(session_state):
         "redemption_id": str(uuid4()),
         "item": redeemed_item,
         "redeemed_at": datetime.now(timezone.utc).isoformat(),
-        "user_id": "demo_user",
+        "user_id": get_current_user_id(session_state),
         "status": "redeemed"
     }
 
@@ -92,7 +94,7 @@ def buy_reward_item(session_state, item_id):
         "item": purchased_item,
         "cost": cost,
         "redeemed_at": datetime.now(timezone.utc).isoformat(),
-        "user_id": session_state.get("user_id", "demo_user"),
+        "user_id": get_current_user_id(session_state),
         "status": "purchased",
     }
 
