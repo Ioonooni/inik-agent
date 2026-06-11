@@ -453,6 +453,16 @@ def render_agent_tools_panel():
 
 
 def main_app():
+    def save_current_memory():
+        save_persistent_memory(
+            st.session_state.user_facts,
+            st.session_state.user_profile,
+            st.session_state.inventory,
+            st.session_state.intimacy_score,
+            st.session_state.points,
+            st.session_state.relationship_state,
+        )
+
     user_id = st.session_state.get("user_id")
     username = st.session_state.get("username", "User")
 
