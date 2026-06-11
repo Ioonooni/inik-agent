@@ -1,3 +1,4 @@
+from rewards import get_shop_item
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -57,3 +58,54 @@ def get_latest_redemption(user_profile):
         return None
 
     return history[-1]
+
+
+def buy_reward_item(session_state, item_id):
+    item = get_shop_item(item_id)
+
+    if not item:
+        return {
+            "ok": False,
+            "error": "Unknown shop item",
+            "record": None,
+        }
+
+    cost = int(item.get("cost", 0))
+    current_points = int(session_state.get("points", 0))
+
+    if current_points < cost:
+        return {
+            "ok": False,
+            "error": f"Not enough points. Need {cost}, have {current_points}",
+            "record": None,
+        }
+
+    inventory = list(session_state.get("inventory", []))
+    purchased_item = dict(item)
+    inventory.append(purchased_item)
+
+    session_state.points = current_points - cost
+    session_state.inventory = inventory
+
+    record = {
+        "redemption_id": str(uuid4()),
+        "item": purchased_item,
+        "cost": cost,
+        "redeemed_at": datetime.now(timezone.utc).isoformat(),
+        "user_id": session_state.get("user_id", "demo_user"),
+        "status": "purchased",
+    }
+
+    user_profile = session_state.get("user_profile", {})
+    redemption_history = get_redemption_history(user_profile)
+    redemption_history.append(record)
+
+    user_profile["redemption_history"] = redemption_history[-20:]
+    user_profile["redemption_count"] = len(user_profile["redemption_history"])
+    session_state.user_profile = user_profile
+
+    return {
+        "ok": True,
+        "error": None,
+        "record": record,
+    }

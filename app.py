@@ -13,7 +13,7 @@ from memory_verifier import verify as verify_memories
 from memory_quality import assess_memory_quality
 from response_router import route as route_response, RouteType
 from facts import extract_facts, answer_from_facts
-from rewards import check_reward, format_reward
+from rewards import check_reward, format_reward, get_reward_shop
 from relationship import (
     create_relationship_state,
     update_relationship_state,
@@ -43,7 +43,8 @@ from event_logger import send_event_to_n8n
 from redemption import (
     redeem_first_inventory_item,
     get_redemption_count,
-    get_latest_redemption
+    get_latest_redemption,
+    buy_reward_item
 )
 from auth_manager import login_or_create_user
 from planner import build_plan, explain_plan
@@ -525,6 +526,24 @@ def main_app():
                 st.write(f"- {topic}")
         else:
             st.write("ยังไม่มี recurring topics")
+
+
+        st.subheader("Reward Shop")
+
+        for shop_item in get_reward_shop():
+            label = f"{format_reward(shop_item)} | Cost: {shop_item.get('cost', 0)} points"
+            if st.button(f"Buy: {shop_item.get('name')}", key=f"buy_{shop_item.get('id')}"):
+                purchase_result = buy_reward_item(st.session_state, shop_item.get("id"))
+                st.session_state.last_redemption_result = purchase_result
+
+                if purchase_result["ok"]:
+                    st.success(f"Purchased: {format_reward(purchase_result['record'].get('item'))}")
+                    save_current_memory()
+                    st.rerun()
+                else:
+                    st.error(purchase_result.get("error"))
+
+            st.caption(label)
 
         st.subheader("Inventory")
 

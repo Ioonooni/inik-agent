@@ -64,3 +64,42 @@ def format_reward(item):
         return f"{name} [{rarity}/{item_type}] — {description}".strip()
 
     return _legacy_item_name(item)
+
+
+REWARD_SHOP = [
+    {
+        "id": "blue_star_fragment",
+        "name": "เศษดาวสีฟ้า",
+        "rarity": "common",
+        "type": "material",
+        "cost": 5,
+        "description": "เศษแสงเล็ก ๆ ที่เหมือนหลุดมาจากท้องฟ้า",
+    },
+    {
+        "id": "secret_forest_tea",
+        "name": "ใบชาจากป่าลับ",
+        "rarity": "rare",
+        "type": "gift",
+        "cost": 12,
+        "description": "ใบชาที่มีกลิ่นเหมือนความทรงจำที่ยังไม่เกิดขึ้น",
+    },
+    {
+        "id": "inik_small_secret",
+        "name": "ความลับเล็ก ๆ ของ i nik",
+        "rarity": "epic",
+        "type": "story",
+        "cost": 20,
+        "description": "ไม่ใช่ความลับใหญ่ แต่ก็ไม่ใช่ของที่แจกมั่ว ๆ",
+    },
+]
+
+
+def get_reward_shop():
+    return [dict(item) for item in REWARD_SHOP]
+
+
+def get_shop_item(item_id):
+    for item in REWARD_SHOP:
+        if item.get("id") == item_id:
+            return dict(item)
+    return None
