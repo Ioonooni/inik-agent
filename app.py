@@ -13,7 +13,7 @@ from memory_verifier import verify as verify_memories
 from memory_quality import assess_memory_quality
 from response_router import route as route_response, RouteType
 from facts import extract_facts, answer_from_facts
-from rewards import check_reward
+from rewards import check_reward, format_reward
 from relationship import (
     create_relationship_state,
     update_relationship_state,
@@ -530,7 +530,7 @@ def main_app():
 
         if st.session_state.inventory:
             for item in st.session_state.inventory:
-                st.write(f"🎁 {item}")
+                st.write(f"🎁 {format_reward(item)}")
 
             if st.button("Redeem First Item"):
                 redemption_result = redeem_first_inventory_item(st.session_state)
@@ -561,7 +561,7 @@ def main_app():
         st.write(f"Redeemed Items: {redemption_count}")
 
         if latest_redemption:
-            st.write(f"Latest Redeemed: {latest_redemption.get('item')}")
+            st.write(f"Latest Redeemed: {format_reward(latest_redemption.get('item'))}")
 
         st.divider()
 
@@ -945,7 +945,7 @@ def main_app():
 
             st.session_state.messages.append({
                 "role": "assistant",
-                "content": f"🎁 i nik เจอของแปลกให้เธอ: {reward}"
+                "content": f"🎁 i nik เจอของแปลกให้เธอ: {format_reward(reward)}"
             })
 
         persist_current_state()

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from behavior import get_stage
-from rewards import check_reward
+from rewards import check_reward, format_reward
 from relationship import update_relationship_state
 from event_logger import send_event_to_n8n
 
@@ -68,6 +68,7 @@ def get_inventory(session_state: Any) -> Dict[str, Any]:
         "tool": "get_inventory",
         "timestamp": _now_iso(),
         "inventory": inventory,
+        "inventory_display": [format_reward(item) for item in inventory],
         "inventory_count": len(inventory),
     }
 
