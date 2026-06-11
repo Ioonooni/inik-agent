@@ -93,6 +93,8 @@ def buy_reward_item(session_state, item_id):
         "redemption_id": str(uuid4()),
         "item": purchased_item,
         "cost": cost,
+        "points_before": current_points,
+        "points_after": session_state.points,
         "redeemed_at": datetime.now(timezone.utc).isoformat(),
         "user_id": get_current_user_id(session_state),
         "status": "purchased",

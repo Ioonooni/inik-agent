@@ -548,7 +548,12 @@ def main_app():
                 st.session_state.last_redemption_result = purchase_result
 
                 if purchase_result["ok"]:
-                    st.success(f"Purchased: {format_reward(purchase_result['record'].get('item'))}")
+                    record = purchase_result["record"]
+                    st.success(
+                        f"Purchased: {format_reward(record.get('item'))} | "
+                        f"Cost: {record.get('cost')} points | "
+                        f"Points: {record.get('points_before')} → {record.get('points_after')}"
+                    )
 
                     event_result = send_event_to_n8n(
                         "reward_shop_purchase",
