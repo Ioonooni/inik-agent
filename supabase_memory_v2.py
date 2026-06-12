@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 try:
@@ -96,3 +97,36 @@ def list_supabase_memories(
     )
 
     return list(getattr(result, "data", []) or [])
+
+
+def mark_supabase_memories_used(
+    client: Client,
+    memories: List[Dict[str, Any]],
+    table_name: str = TABLE_NAME,
+) -> Dict[str, Any]:
+    updated = 0
+    errors = []
+
+    for memory in memories:
+        memory_id = memory.get("memory_id")
+        if not memory_id:
+            continue
+
+        try:
+            next_hit_count = int(memory.get("hit_count", 0)) + 1
+
+            client.table(table_name).update({
+                "hit_count": next_hit_count,
+                "last_seen_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("memory_id", memory_id).execute()
+
+            updated += 1
+
+        except Exception as error:
+            errors.append(str(error))
+
+    return {
+        "ok": len(errors) == 0,
+        "updated": updated,
+        "errors": errors,
+    }
