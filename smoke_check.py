@@ -7,6 +7,9 @@ COMMANDS = [
     ("Acceptance checks", [sys.executable, "acceptance_checks.py"]),
     ("Auth flow static regression", [sys.executable, "test_auth_flow_static.py"]),
     ("Routing tests", [sys.executable, "test_routing.py"]),
+    ("Memory pipeline tests", [sys.executable, "test_memory_pipeline.py"]),
+    ("Memory quality tests", [sys.executable, "test_memory_quality.py"]),
+    ("Memory direct answer tests", [sys.executable, "test_memory_direct_answer.py"]),
 ]
 
 
