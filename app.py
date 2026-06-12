@@ -585,6 +585,9 @@ def main_app():
                 st.session_state.last_redemption_result = redemption_result
 
                 if redemption_result["ok"]:
+                    record = redemption_result["record"]
+                    st.success(record.get("effect_message", "Redeemed item"))
+
                     persist_current_state()
 
                     event_result = send_event_to_n8n(
@@ -597,6 +600,8 @@ def main_app():
                     )
 
                     st.session_state.last_event_log_result = event_result
+                else:
+                    st.error(redemption_result.get("error", "Redeem failed"))
 
                 st.rerun()
 
