@@ -18,6 +18,13 @@ def _safe_get(session_state: Any, key: str, default: Any = None) -> Any:
         return default
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def get_user_state(session_state: Any) -> Dict[str, Any]:
     intimacy_score = _safe_get(session_state, "intimacy_score", 0)
 
@@ -256,7 +263,7 @@ def run_tool(
         ),
         "grant_points": lambda: grant_points(
             session_state,
-            amount=int(arguments.get("amount", 1)),
+            amount=_safe_int(arguments.get("amount", 1), default=1),
             reason=arguments.get("reason", "tool_grant")
         ),
         "log_agent_event": lambda: log_agent_event(
