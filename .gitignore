@@ -14,3 +14,10 @@ status.txt
 # Python
 __pycache__/
 *.pyc
+# Reports
+*_report.txt
+status.txt
+
+# Python
+__pycache__/
+*.pyc
