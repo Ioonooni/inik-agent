@@ -7,3 +7,10 @@ tmp_memory_store_v2_test.json
 
 # Local memory fallback store
 memory_store_v2.json
+# Reports
+*_report.txt
+status.txt
+
+# Python
+__pycache__/
+*.pyc
