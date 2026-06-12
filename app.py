@@ -453,17 +453,6 @@ def render_agent_tools_panel():
 
 
 def main_app():
-    if "user_id" not in st.session_state:
-        st.session_state.user_id = "demo_user"
-
-    with st.sidebar:
-        st.subheader("User Identity")
-        st.session_state.user_id = st.text_input(
-            "User ID",
-            value=st.session_state.user_id,
-            help="ใช้แยก memory/event/reward ของแต่ละ user แบบเบา ๆ ก่อนทำ auth จริง"
-        ).strip() or "demo_user"
-
     def save_current_memory():
         save_memory_to_supabase(
             st.session_state.user_facts,
