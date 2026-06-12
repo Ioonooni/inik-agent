@@ -16,6 +16,7 @@ COMMANDS = [
     ("Final acceptance tests", [sys.executable, "test_final_acceptance.py"]),
     ("Runtime fallback tests", [sys.executable, "test_runtime_fallback.py"]),
     ("Agent tool safety tests", [sys.executable, "test_agent_tools.py"]),
+    ("Planner tool compatibility tests", [sys.executable, "test_planner_tools.py"]),
 ]
 
 
