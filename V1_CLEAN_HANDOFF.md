@@ -47,3 +47,8 @@ V2 should start only after V1 remains stable:
 2. Runtime memory separation test
 3. Auth / full multi-user later
 4. Tool calling / planner / autonomous trigger later
+
+## Runtime User Separation Test
+- User A memory save/recall works
+- User B does not see User A memory
+- Result: passed
