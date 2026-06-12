@@ -6,6 +6,7 @@ COMMANDS = [
     ("Compile app", [sys.executable, "-m", "py_compile", "app.py"]),
     ("Acceptance checks", [sys.executable, "acceptance_checks.py"]),
     ("Auth flow static regression", [sys.executable, "test_auth_flow_static.py"]),
+    ("Routing tests", [sys.executable, "test_routing.py"]),
 ]
 
 
