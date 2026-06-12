@@ -12,6 +12,7 @@ COMMANDS = [
     ("Memory direct answer tests", [sys.executable, "test_memory_direct_answer.py"]),
     ("Supabase SQL schema tests", [sys.executable, "test_supabase_sql_schema.py"]),
     ("Supabase memory V2 tests", [sys.executable, "test_supabase_memory_v2.py"]),
+    ("Event logger tests", [sys.executable, "test_event_logger.py"]),
 ]
 
 
