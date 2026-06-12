@@ -1000,14 +1000,18 @@ def main_app():
         persist_current_state()
 
         if should_run_autonomous_check(st.session_state):
-            auto_result = run_autonomous_check(st.session_state, model=model)
-            mark_autonomous_run(st.session_state)
-            auto_msg = auto_result.get("decision", {}).get("message")
-            if auto_msg:
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": auto_msg
-                })
+            try:
+                auto_result = run_autonomous_check(st.session_state, model=model)
+                auto_msg = auto_result.get("decision", {}).get("message")
+                if auto_msg:
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": auto_msg
+                    })
+            except Exception as error:
+                st.session_state.last_autonomous_error = str(error)
+            finally:
+                mark_autonomous_run(st.session_state)
 
         event_result = send_event_to_n8n(
             "user_message",
