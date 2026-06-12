@@ -373,3 +373,18 @@ if __name__ == "__main__":
 
     print("All pipeline tests passed.")
     sys.exit(0)
+
+def test_combined_name_and_likes_extraction() -> None:
+    facts = extract_facts("ฉันชื่ออุ่น และฉันชอบหลุมดำ", {})
+    _check(
+        '"ฉันชื่ออุ่น และฉันชอบหลุมดำ" stores name=อุ่น',
+        facts.get("name") == "อุ่น",
+        f"got {facts}",
+    )
+    _check(
+        '"ฉันชื่ออุ่น และฉันชอบหลุมดำ" stores likes=หลุมดำ',
+        facts.get("likes") == "หลุมดำ",
+        f"got {facts}",
+    )
+
+test_combined_name_and_likes_extraction()
