@@ -48,6 +48,7 @@ from redemption import (
 )
 from auth_manager import login_or_create_user
 from planner import build_plan, explain_plan
+from planner_guard import normalize_plan
 from agent_tools import list_available_tools, run_tool
 from prompt_builder import build_main_prompt
 from autonomous import run_autonomous_check
@@ -453,17 +454,6 @@ def render_agent_tools_panel():
 
 
 def main_app():
-    if "user_id" not in st.session_state:
-        st.session_state.user_id = "demo_user"
-
-    with st.sidebar:
-        st.subheader("User Identity")
-        st.session_state.user_id = st.text_input(
-            "User ID",
-            value=st.session_state.user_id,
-            help="ใช้แยก memory/event/reward ของแต่ละ user แบบเบา ๆ ก่อนทำ auth จริง"
-        ).strip() or "demo_user"
-
     def save_current_memory():
         save_memory_to_supabase(
             st.session_state.user_facts,
@@ -595,6 +585,9 @@ def main_app():
                 st.session_state.last_redemption_result = redemption_result
 
                 if redemption_result["ok"]:
+                    record = redemption_result["record"]
+                    st.success(record.get("effect_message", "Redeemed item"))
+
                     persist_current_state()
 
                     event_result = send_event_to_n8n(
@@ -607,6 +600,8 @@ def main_app():
                     )
 
                     st.session_state.last_event_log_result = event_result
+                else:
+                    st.error(redemption_result.get("error", "Redeem failed"))
 
                 st.rerun()
 
@@ -841,11 +836,12 @@ def main_app():
         verified = verify_memories(raw_memories or [])
 
         # 3. Run planner for tool-based intents
-        plan = build_plan(user_message, st.session_state)
+        raw_plan = build_plan(user_message, st.session_state)
+        plan = normalize_plan(raw_plan)
         st.session_state.last_agent_plan = plan
 
         planner_result = None
-        if plan and plan.get("tool"):
+        if plan.get("tool"):
             planner_result = run_tool(
                 plan["tool"],
                 st.session_state,
@@ -1009,14 +1005,18 @@ def main_app():
         persist_current_state()
 
         if should_run_autonomous_check(st.session_state):
-            auto_result = run_autonomous_check(st.session_state, model=model)
-            mark_autonomous_run(st.session_state)
-            auto_msg = auto_result.get("decision", {}).get("message")
-            if auto_msg:
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": auto_msg
-                })
+            try:
+                auto_result = run_autonomous_check(st.session_state, model=model)
+                auto_msg = auto_result.get("decision", {}).get("message")
+                if auto_msg:
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": auto_msg
+                    })
+            except Exception as error:
+                st.session_state.last_autonomous_error = str(error)
+            finally:
+                mark_autonomous_run(st.session_state)
 
         event_result = send_event_to_n8n(
             "user_message",

@@ -21,3 +21,14 @@ status.txt
 # Python
 __pycache__/
 *.pyc
+
+# Local scan outputs
+v2_*.txt
+
+# Local runtime data
+memory_store.json
+memory_store_v2.json
+tmp_memory_store_v2_test.json
+
+# One-off patch scripts
+fix_*_runtime.py

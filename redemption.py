@@ -6,6 +6,13 @@ from user_identity import get_current_user_id
 
 
 
+def _set_state(session_state, key, value):
+    try:
+        session_state[key] = value
+    except Exception:
+        setattr(session_state, key, value)
+
+
 def _build_redemption_effect(item):
     if isinstance(item, dict):
         item_type = item.get("type", "item")
@@ -58,8 +65,8 @@ def redeem_first_inventory_item(session_state):
     user_profile["redemption_history"] = redemption_history[-20:]
     user_profile["redemption_count"] = len(user_profile["redemption_history"])
 
-    session_state.inventory = inventory
-    session_state.user_profile = user_profile
+    _set_state(session_state, "inventory", inventory)
+    _set_state(session_state, "user_profile", user_profile)
 
     return {
         "ok": True,
@@ -105,15 +112,15 @@ def buy_reward_item(session_state, item_id):
     purchased_item = dict(item)
     inventory.append(purchased_item)
 
-    session_state.points = current_points - cost
-    session_state.inventory = inventory
+    _set_state(session_state, "points", current_points - cost)
+    _set_state(session_state, "inventory", inventory)
 
     record = {
         "redemption_id": str(uuid4()),
         "item": purchased_item,
         "cost": cost,
         "points_before": current_points,
-        "points_after": session_state.points,
+        "points_after": session_state.get("points", current_points - cost),
         "redeemed_at": datetime.now(timezone.utc).isoformat(),
         "user_id": get_current_user_id(session_state),
         "status": "purchased",
@@ -125,7 +132,7 @@ def buy_reward_item(session_state, item_id):
 
     user_profile["redemption_history"] = redemption_history[-20:]
     user_profile["redemption_count"] = len(user_profile["redemption_history"])
-    session_state.user_profile = user_profile
+    _set_state(session_state, "user_profile", user_profile)
 
     return {
         "ok": True,

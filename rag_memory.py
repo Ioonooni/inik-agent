@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from supabase_memory import get_supabase_client
-from supabase_memory_v2 import search_supabase_memories, list_supabase_memories
+from supabase_memory_v2 import search_supabase_memories, list_supabase_memories, mark_supabase_memories_used
 from memory_ranking import rank_memories
 
 
@@ -85,12 +85,15 @@ def search_memory_notes(
             limit=max(limit * 3, limit),
         )
 
-        ranked = rank_memories(memories, limit=limit)
+        ranked = rank_memories(memories, limit=limit, query=cleaned_query)
+
+        usage_result = mark_supabase_memories_used(client, ranked)
 
         return {
             "ok": True,
             "backend": "memories_v2",
             "results": ranked,
+            "usage_result": usage_result,
         }
 
     except Exception as primary_error:

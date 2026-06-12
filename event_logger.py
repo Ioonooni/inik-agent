@@ -7,6 +7,7 @@ from supabase_memory import get_supabase_client
 
 
 EVENT_TABLE_NAME = "i_nik_events"
+N8N_TIMEOUT_SECONDS = 8
 
 
 def get_event_webhook_url():
@@ -148,7 +149,7 @@ def send_event_to_n8n(event_type, session_state, extra=None):
         response = requests.post(
             webhook_url,
             json=payload,
-            timeout=8
+            timeout=N8N_TIMEOUT_SECONDS
         )
 
         n8n_ok = response.status_code < 400
