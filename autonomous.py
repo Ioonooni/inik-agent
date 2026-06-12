@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from agent_tools import run_tool
+from planner_guard import normalize_plan
 
 
 _ACTION_COOLDOWNS = {
@@ -127,11 +128,25 @@ def run_autonomous_check(session_state: Any, model: Any = None) -> Dict:
 
     tool_result = None
     if decision.get("should_act") and decision.get("tool"):
-        tool_result = run_tool(
-            decision["tool"],
-            session_state,
-            decision.get("arguments", {}),
-        )
+        safe_plan = normalize_plan({
+            "goal": decision.get("action", "autonomous_action"),
+            "tool": decision.get("tool"),
+            "arguments": decision.get("arguments", {}),
+        })
+
+        if safe_plan.get("ok") and safe_plan.get("tool"):
+            tool_result = run_tool(
+                safe_plan["tool"],
+                session_state,
+                safe_plan.get("arguments", {}),
+            )
+        else:
+            tool_result = {
+                "ok": False,
+                "tool": decision.get("tool"),
+                "timestamp": now_iso(),
+                "error": safe_plan.get("reason", "invalid_autonomous_tool"),
+            }
 
     return {
         "ok": True,
