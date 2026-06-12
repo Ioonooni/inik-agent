@@ -2,7 +2,14 @@ from agent_tools import run_tool
 
 
 class Session(dict):
-    pass
+    def __getattr__(self, key):
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError(key)
+
+    def __setattr__(self, key, value):
+        self[key] = value
 
 
 def test_unknown_tool_returns_error():
