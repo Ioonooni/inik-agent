@@ -18,6 +18,7 @@ COMMANDS = [
     ("Agent tool safety tests", [sys.executable, "test_agent_tools.py"]),
     ("Planner tool compatibility tests", [sys.executable, "test_planner_tools.py"]),
     ("Planner guard tests", [sys.executable, "test_planner_guard.py"]),
+    ("Redemption V1 tests", [sys.executable, "test_redemption_v1.py"]),
 ]
 
 
