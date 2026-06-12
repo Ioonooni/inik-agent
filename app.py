@@ -48,6 +48,7 @@ from redemption import (
 )
 from auth_manager import login_or_create_user
 from planner import build_plan, explain_plan
+from planner_guard import normalize_plan
 from agent_tools import list_available_tools, run_tool
 from prompt_builder import build_main_prompt
 from autonomous import run_autonomous_check
@@ -830,11 +831,12 @@ def main_app():
         verified = verify_memories(raw_memories or [])
 
         # 3. Run planner for tool-based intents
-        plan = build_plan(user_message, st.session_state)
+        raw_plan = build_plan(user_message, st.session_state)
+        plan = normalize_plan(raw_plan)
         st.session_state.last_agent_plan = plan
 
         planner_result = None
-        if plan and plan.get("tool"):
+        if plan.get("tool"):
             planner_result = run_tool(
                 plan["tool"],
                 st.session_state,
