@@ -21,3 +21,6 @@ status.txt
 # Python
 __pycache__/
 *.pyc
+
+# Local scan outputs
+v2_*.txt
