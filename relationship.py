@@ -152,31 +152,7 @@ def update_relationship_state(user_message, relationship_state):
     return enrich_relationship_state(relationship_state)
 
 
-def describe_relationship_state(relationship_state):
-    relationship_state = enrich_relationship_state(relationship_state)
-
-    trust = relationship_state.get("trust", 0)
-    familiarity = relationship_state.get("familiarity", 0)
-    curiosity = relationship_state.get("curiosity", 0)
-    attachment = relationship_state.get("attachment", 0)
-    relationship_score = relationship_state.get("relationship_score", 0)
-    relationship_stage = relationship_state.get("relationship_stage", "Observer")
-
-    return (
-        "Relationship State:\n"
-        f"- Trust: {trust}\n"
-        f"- Familiarity: {familiarity}\n"
-        f"- Curiosity: {curiosity}\n"
-        f"- Attachment: {attachment}\n"
-        f"- Relationship Score: {relationship_score}\n"
-        f"- Relationship Stage: {relationship_stage}\n\n"
-        "Interpretation:\n"
-        "- Trust = ผู้ใช้เปิดใจหรือเล่าเรื่องส่วนตัวมากแค่ไหน\n"
-        "- Familiarity = คุยกันบ่อยและคุ้นกันแค่ไหน\n"
-        "- Curiosity = i nik สนใจแพตเทิร์นของผู้ใช้มากแค่ไหน\n"
-        "- Attachment = ระดับความผูกพันเชิงตัวละคร ไม่ใช่ความโรแมนติก"
-    )
-    def apply_relationship_decay(relationship_state, days_inactive):
+def apply_relationship_decay(relationship_state, days_inactive):
     relationship_state = enrich_relationship_state(relationship_state)
 
     try:
@@ -204,3 +180,29 @@ def describe_relationship_state(relationship_state):
     )
 
     return enrich_relationship_state(relationship_state)
+
+
+def describe_relationship_state(relationship_state):
+    relationship_state = enrich_relationship_state(relationship_state)
+
+    trust = relationship_state.get("trust", 0)
+    familiarity = relationship_state.get("familiarity", 0)
+    curiosity = relationship_state.get("curiosity", 0)
+    attachment = relationship_state.get("attachment", 0)
+    relationship_score = relationship_state.get("relationship_score", 0)
+    relationship_stage = relationship_state.get("relationship_stage", "Observer")
+
+    return (
+        "Relationship State:\n"
+        f"- Trust: {trust}\n"
+        f"- Familiarity: {familiarity}\n"
+        f"- Curiosity: {curiosity}\n"
+        f"- Attachment: {attachment}\n"
+        f"- Relationship Score: {relationship_score}\n"
+        f"- Relationship Stage: {relationship_stage}\n\n"
+        "Interpretation:\n"
+        "- Trust = ผู้ใช้เปิดใจหรือเล่าเรื่องส่วนตัวมากแค่ไหน\n"
+        "- Familiarity = คุยกันบ่อยและคุ้นกันแค่ไหน\n"
+        "- Curiosity = i nik สนใจแพตเทิร์นของผู้ใช้มากแค่ไหน\n"
+        "- Attachment = ระดับความผูกพันเชิงตัวละคร ไม่ใช่ความโรแมนติก"
+    )
