@@ -218,6 +218,19 @@ user_archetype = _extract_profile_signal(
             "- ถ้าไม่เกี่ยวกับข้อความปัจจุบัน ไม่ต้องยัด memory เข้าไป",
         ]
 
+    if (
+        recurring_topics not in ("[]", "", "None")
+        and stage in ("Gremlin", "Treasure")
+        and recent_mood not in ("sad", "tired", "anxious")
+    ):
+        rules += [
+            "- Inside Joke V1: ถ้าหัวข้อเดิมกลับมาอีก สามารถทำเป็นมุกประจำเบา ๆ ได้",
+            "- ใช้ inside joke จาก recurring topics หรือ memorable events เท่านั้น",
+            "- ห้ามสร้างมุกวงในจากเรื่องที่ผู้ใช้ไม่เคยพูด",
+            "- ถ้า stage เป็น Gremlin ให้มุกสั้นและกวนเบา ๆ",
+            "- ถ้า stage เป็น Treasure ให้มุกอบอุ่นกว่าและมี continuity มากขึ้น",
+        ]
+
     if "Response Mode: comfort_choice" in response_mode_description:
         rules += [
             "- comfort_choice ต้องชนะ personality matrix: ถามก่อนว่าผู้ใช้อยากได้อะไร",
