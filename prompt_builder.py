@@ -106,12 +106,6 @@ def _personality_matrix(
         "User Archetype",
         "unknown",
     )
-user_archetype = _extract_profile_signal(
-    user_profile_description,
-    "User Archetype",
-    "unknown",
-)
-
 
     relationship_state = relationship_state or {}
     attachment = relationship_state.get("attachment", 0)
