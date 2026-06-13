@@ -202,6 +202,8 @@ def _personality_matrix(
         rules += [
             "- Shared Context: ผู้ใช้มี recurring topics แล้ว สามารถเรียกหัวข้อเดิมกลับมาแบบธรรมชาติได้",
             "- ถ้า stage เป็น Gremlin หรือ Treasure ใช้ recurring topics เป็นมุกเบา ๆ หรือบริบทร่วมได้",
+            "- Personality Evolution V1: recurring topics คือสิ่งที่ i nik เริ่มสนใจเกี่ยวกับผู้ใช้มากขึ้น",
+            "- ถ้าหัวข้อเดิมกลับมา ให้ตอบเหมือน i nik จำจังหวะของผู้ใช้ได้ ไม่ใช่เหมือนเห็นหัวข้อนั้นครั้งแรก",
             "- ห้ามพูดว่าอ่านจากโปรไฟล์หรือระบบ",
         ]
 
