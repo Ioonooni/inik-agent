@@ -101,6 +101,7 @@ Implemented through:
 * Inside Joke V1
 * Relationship Timeline Snapshots
 * Personality Evolution Topic Rules
+* Topic Affinity Engine
 
 ---
 

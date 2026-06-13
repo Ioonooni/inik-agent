@@ -392,3 +392,4 @@ Recently Completed:
 * Shared Memory Callback Rules
 * Relationship Timeline Snapshots
 * Personality Evolution Topic Rules
+* Topic Affinity Engine
