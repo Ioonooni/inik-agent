@@ -17,7 +17,8 @@ from rewards import check_reward, format_reward, get_reward_shop
 from relationship import (
     create_relationship_state,
     update_relationship_state,
-    describe_relationship_state
+    describe_relationship_state,
+    apply_relationship_decay
 )
 from memory_gateway import load_memory, save_memory, get_memory_status
 from supabase_memory import save_memory_to_supabase, get_redacted_supabase_url
@@ -308,6 +309,15 @@ def init_user_session():
         "relationship_state",
         create_relationship_state()
     )
+
+    if last_date_str:
+        try:
+            st.session_state.relationship_state = apply_relationship_decay(
+                st.session_state.relationship_state,
+                days_inactive,
+            )
+        except Exception:
+            pass
 
     st.session_state.inventory = st.session_state.persistent_memory.get(
         "inventory",

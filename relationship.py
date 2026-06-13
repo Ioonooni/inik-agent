@@ -176,3 +176,31 @@ def describe_relationship_state(relationship_state):
         "- Curiosity = i nik สนใจแพตเทิร์นของผู้ใช้มากแค่ไหน\n"
         "- Attachment = ระดับความผูกพันเชิงตัวละคร ไม่ใช่ความโรแมนติก"
     )
+    def apply_relationship_decay(relationship_state, days_inactive):
+    relationship_state = enrich_relationship_state(relationship_state)
+
+    try:
+        days = int(days_inactive or 0)
+    except (TypeError, ValueError):
+        days = 0
+
+    if days <= 7:
+        return relationship_state
+
+    decay_units = days // 7
+
+    familiarity_decay = min(20, decay_units * 2)
+    curiosity_decay = min(15, decay_units * 2)
+    attachment_decay = min(10, decay_units)
+
+    relationship_state["familiarity"] = _clamp(
+        relationship_state.get("familiarity", 0) - familiarity_decay
+    )
+    relationship_state["curiosity"] = _clamp(
+        relationship_state.get("curiosity", 0) - curiosity_decay
+    )
+    relationship_state["attachment"] = _clamp(
+        relationship_state.get("attachment", 0) - attachment_decay
+    )
+
+    return enrich_relationship_state(relationship_state)
