@@ -139,6 +139,20 @@ def describe_user_profile(user_profile):
     total_visits = user_profile.get("total_visits", 0)
     last_interaction_date = user_profile.get("last_interaction_date")
 
+    recent_memorable_events = memorable_events[-2:] if memorable_events else []
+
+    return f"""
+User Profile:
+- Recent Mood: {recent_mood}
+- Conversation Style: {conversation_style}
+- Recurring Topics: {recurring_topics}
+- Memorable Events Count: {len(memorable_events)}
+- Recent Memorable Events: {recent_memorable_events}
+- Total User Messages: {total_messages}
+- Total Visits: {total_visits}
+- Last Interaction Date: {last_interaction_date}
+"""
+
     return f"""
 User Profile:
 - Recent Mood: {recent_mood}
