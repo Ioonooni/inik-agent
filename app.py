@@ -829,7 +829,11 @@ def main_app():
                     save_memory_note(
                     user_id=user_id,
                     content=user_message,
-                    memory_type=quality.memory_type
+                    memory_type=quality.memory_type,
+                    metadata={
+                        "importance": quality.importance,
+                        "quality_reason": quality.reason,
+                    },
                 )
             except Exception as error:
                 print("[RAG SAVE ERROR]", error)
