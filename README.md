@@ -143,6 +143,15 @@ Tracks:
 * Trust
 * Familiarity
 * Curiosity
+* Attachment
+* Relationship Score
+* Relationship Stage
+
+Features:
+
+* Observer / Gremlin / Treasure progression
+* Relationship decay
+* Re-engagement awareness
 
 Purpose:
 
@@ -369,4 +378,13 @@ Repository State:
 
 Current Focus:
 
-Phase 2 — Adaptive Personality System
+Phase 2B — Dynamic Personality Evolution
+
+Recently Completed:
+
+* Adaptive Personality Matrix
+* User Archetype Detection
+* Shared Memory Prompting
+* Relationship Decay
+* Re-engagement Context
+* Stronger stage-dependent behavior

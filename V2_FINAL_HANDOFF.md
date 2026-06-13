@@ -58,12 +58,13 @@ Estimated completion:
 - Reward redemption state handling
 
 ## Next Recommended Phase
-V3 should start with Analytics / Memory Insight Layer:
-- Most discussed topics
-- Important memories ranking
+Phase 2B should continue with Dynamic Personality Evolution:
+- Stronger long-term personality growth
+- Advanced inside joke handling
+- Shared memory callbacks
+- Relationship activity timeline
 - User interest summary
-- Memory timeline
-- Relationship/reward activity summary
+- Re-engagement behavior tuning
 
 Avoid starting:
 - LangChain

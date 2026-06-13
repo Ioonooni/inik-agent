@@ -76,6 +76,10 @@ Implemented through:
 * Trust
 * Familiarity
 * Curiosity
+* Attachment
+* Relationship Score
+* Relationship Stages
+* Relationship Decay
 
 relationship dimensions.
 
@@ -90,6 +94,10 @@ Implemented through:
 * Response Modes
 * Behavioral Stages
 * Planner Routing
+* Adaptive Personality Matrix
+* User Archetype Detection
+* Re-engagement Context
+* Shared Memory Prompting
 
 ---
 
@@ -277,7 +285,9 @@ The prototype successfully demonstrates that a character-centered AI architectur
 
 ## Adaptive Personality System
 
-Different users should experience different versions of the character.
+Partially implemented through mood detection, conversation style detection, user archetypes, personality matrix rules, and stage-aware response behavior.
+
+Further work should focus on deeper personality growth and long-term character evolution.
 
 ---
 
