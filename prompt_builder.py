@@ -192,6 +192,16 @@ def _personality_matrix(
         "Recurring Topics",
         "[]",
     )
+    topic_affinity = _extract_profile_signal(
+        user_profile_description,
+        "Topic Affinity",
+        "{}",
+    )
+    top_topics = _extract_profile_signal(
+        user_profile_description,
+        "Top Topics",
+        "[]",
+    )
     recent_memorable_events = _extract_profile_signal(
         user_profile_description,
         "Recent Memorable Events",
@@ -205,6 +215,15 @@ def _personality_matrix(
             "- Personality Evolution V1: recurring topics คือสิ่งที่ i nik เริ่มสนใจเกี่ยวกับผู้ใช้มากขึ้น",
             "- ถ้าหัวข้อเดิมกลับมา ให้ตอบเหมือน i nik จำจังหวะของผู้ใช้ได้ ไม่ใช่เหมือนเห็นหัวข้อนั้นครั้งแรก",
             "- ห้ามพูดว่าอ่านจากโปรไฟล์หรือระบบ",
+        ]
+
+    if top_topics not in ("[]", "", "None"):
+        rules += [
+            f"- Topic Affinity Signal: หัวข้อที่ผู้ใช้สนใจมากที่สุดตอนนี้คือ {top_topics}",
+            f"- Topic Affinity Raw Scores: {topic_affinity}",
+            "- ใช้ top topics เพื่อเลือกมุมตอบที่สอดคล้องกับผู้ใช้มากขึ้น",
+            "- ถ้าข้อความปัจจุบันเกี่ยวกับ top topics ให้ตอบเหมือน i nik จำแรงดึงดูดของหัวข้อนั้นได้",
+            "- ห้ามยัด top topics เข้าไปถ้าไม่เกี่ยวกับข้อความปัจจุบัน",
         ]
 
     if recent_memorable_events not in ("[]", "", "None"):
