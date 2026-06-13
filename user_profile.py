@@ -7,6 +7,7 @@ def create_user_profile():
         "conversation_style": "unknown",
         "user_archetype": "unknown",
         "recurring_topics": [],
+        "topic_affinity": {},
         "memorable_events": [],
         "total_messages": 0,
         "total_visits": 0,
@@ -97,8 +98,41 @@ def detect_topics(user_message):
     return detected
 
 
-def detect_user_archetype(conversation_style, recurring_topics):
+def update_topic_affinity(topic_affinity, detected_topics):
+    topic_affinity = dict(topic_affinity or {})
+
+    for topic in detected_topics:
+        topic_affinity[topic] = min(
+            100,
+            int(topic_affinity.get(topic, 0)) + 10
+        )
+
+    return dict(
+        sorted(
+            topic_affinity.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )[:10]
+    )
+
+
+def get_top_topics(topic_affinity, limit=3):
+    topic_affinity = dict(topic_affinity or {})
+
+    return [
+        topic
+        for topic, _score in sorted(
+            topic_affinity.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )[:limit]
+    ]
+
+
+def detect_user_archetype(conversation_style, recurring_topics, topic_affinity=None):
     topics = set(recurring_topics or [])
+    top_topics = set(get_top_topics(topic_affinity or {}, limit=3))
+    topics = topics.union(top_topics)
 
     if conversation_style == "philosophical" or topics.intersection({"universe", "identity", "human"}):
         return "explorer"
@@ -172,9 +206,15 @@ def update_user_profile(user_message, user_profile):
 
     user_profile["recurring_topics"] = user_profile["recurring_topics"][-10:]
 
+    user_profile["topic_affinity"] = update_topic_affinity(
+        user_profile.get("topic_affinity", {}),
+        detected_topics,
+    )
+
     user_profile["user_archetype"] = detect_user_archetype(
         user_profile.get("conversation_style", "unknown"),
         user_profile.get("recurring_topics", []),
+        user_profile.get("topic_affinity", {}),
     )
 
     if len(user_message.strip()) >= 100:
@@ -195,6 +235,8 @@ def describe_user_profile(user_profile):
     conversation_style = user_profile.get("conversation_style", "unknown")
     user_archetype = user_profile.get("user_archetype", "unknown")
     recurring_topics = user_profile.get("recurring_topics", [])
+    topic_affinity = user_profile.get("topic_affinity", {})
+    top_topics = get_top_topics(topic_affinity, limit=3)
     memorable_events = user_profile.get("memorable_events", [])
     total_messages = user_profile.get("total_messages", 0)
     total_visits = user_profile.get("total_visits", 0)
@@ -209,6 +251,8 @@ User Profile:
 - Conversation Style: {conversation_style}
 - User Archetype: {user_archetype}
 - Recurring Topics: {recurring_topics}
+- Topic Affinity: {topic_affinity}
+- Top Topics: {top_topics}
 - Memorable Events Count: {len(memorable_events)}
 - Recent Memorable Events: {recent_memorable_events}
 - Total User Messages: {total_messages}
