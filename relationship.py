@@ -26,11 +26,13 @@ _PLAYFUL_WORDS = {
 
 
 def create_relationship_state():
-    return {
+    state = {
         "trust": 0,
         "familiarity": 0,
         "curiosity": 0,
+        "attachment": 0,
     }
+    return enrich_relationship_state(state)
 
 
 def _clamp(value, low=0, high=100):
@@ -41,9 +43,54 @@ def _contains_any(text, words):
     return any(word in text for word in words)
 
 
+def get_relationship_score(relationship_state):
+    if relationship_state is None:
+        relationship_state = create_relationship_state()
+
+    trust = relationship_state.get("trust", 0)
+    familiarity = relationship_state.get("familiarity", 0)
+    curiosity = relationship_state.get("curiosity", 0)
+    attachment = relationship_state.get("attachment", 0)
+
+    return _clamp(
+        (trust * 0.30)
+        + (familiarity * 0.30)
+        + (curiosity * 0.20)
+        + (attachment * 0.20)
+    )
+
+
+def get_relationship_stage(score):
+    score = _clamp(score)
+
+    if score < 35:
+        return "Observer"
+    if score < 75:
+        return "Gremlin"
+    return "Treasure"
+
+
+def enrich_relationship_state(relationship_state):
+    if relationship_state is None:
+        relationship_state = {}
+
+    relationship_state["trust"] = _clamp(relationship_state.get("trust", 0))
+    relationship_state["familiarity"] = _clamp(relationship_state.get("familiarity", 0))
+    relationship_state["curiosity"] = _clamp(relationship_state.get("curiosity", 0))
+    relationship_state["attachment"] = _clamp(relationship_state.get("attachment", 0))
+
+    score = get_relationship_score(relationship_state)
+    relationship_state["relationship_score"] = score
+    relationship_state["relationship_stage"] = get_relationship_stage(score)
+
+    return relationship_state
+
+
 def update_relationship_state(user_message, relationship_state):
     if relationship_state is None:
         relationship_state = create_relationship_state()
+
+    relationship_state = enrich_relationship_state(relationship_state)
 
     text = (user_message or "").strip()
     lowered = text.lower()
@@ -54,39 +101,37 @@ def update_relationship_state(user_message, relationship_state):
     trust_delta = 0
     familiarity_delta = 0
     curiosity_delta = 0
+    attachment_delta = 0
 
     message_length = len(text)
 
-    # Basic continued interaction. Small gain only.
     familiarity_delta += 1
 
-    # Personal disclosure matters more than raw message count.
     if _contains_any(text, _PERSONAL_DISCLOSURE_WORDS):
         trust_delta += 3
         familiarity_delta += 2
         curiosity_delta += 1
+        attachment_delta += 1
 
-    # Emotional vulnerability builds trust, but not too aggressively.
     if _contains_any(text, _EMOTIONAL_WORDS):
         trust_delta += 4
         curiosity_delta += 1
+        attachment_delta += 2
 
-    # Reflective or meaning-making messages increase curiosity.
     if _contains_any(text, _REFLECTION_WORDS):
         curiosity_delta += 3
 
-    # Long messages are useful only when they contain substance.
     if message_length >= 80:
         curiosity_delta += 2
         familiarity_delta += 1
+        attachment_delta += 1
     elif message_length >= 40:
         curiosity_delta += 1
 
-    # Playful rapport increases familiarity without forcing trust.
     if _contains_any(lowered, _PLAYFUL_WORDS):
         familiarity_delta += 2
+        attachment_delta += 1
 
-    # Negative/friction messages reduce warmth slightly.
     if _contains_any(text, _NEGATIVE_WORDS):
         trust_delta -= 2
         familiarity_delta -= 1
@@ -100,25 +145,34 @@ def update_relationship_state(user_message, relationship_state):
     relationship_state["curiosity"] = _clamp(
         relationship_state.get("curiosity", 0) + curiosity_delta
     )
+    relationship_state["attachment"] = _clamp(
+        relationship_state.get("attachment", 0) + attachment_delta
+    )
 
-    return relationship_state
+    return enrich_relationship_state(relationship_state)
 
 
 def describe_relationship_state(relationship_state):
-    if relationship_state is None:
-        relationship_state = create_relationship_state()
+    relationship_state = enrich_relationship_state(relationship_state)
 
     trust = relationship_state.get("trust", 0)
     familiarity = relationship_state.get("familiarity", 0)
     curiosity = relationship_state.get("curiosity", 0)
+    attachment = relationship_state.get("attachment", 0)
+    relationship_score = relationship_state.get("relationship_score", 0)
+    relationship_stage = relationship_state.get("relationship_stage", "Observer")
 
     return (
         "Relationship State:\n"
         f"- Trust: {trust}\n"
         f"- Familiarity: {familiarity}\n"
-        f"- Curiosity: {curiosity}\n\n"
+        f"- Curiosity: {curiosity}\n"
+        f"- Attachment: {attachment}\n"
+        f"- Relationship Score: {relationship_score}\n"
+        f"- Relationship Stage: {relationship_stage}\n\n"
         "Interpretation:\n"
         "- Trust = ผู้ใช้เปิดใจหรือเล่าเรื่องส่วนตัวมากแค่ไหน\n"
         "- Familiarity = คุยกันบ่อยและคุ้นกันแค่ไหน\n"
-        "- Curiosity = i nik สนใจแพตเทิร์นของผู้ใช้มากแค่ไหน"
+        "- Curiosity = i nik สนใจแพตเทิร์นของผู้ใช้มากแค่ไหน\n"
+        "- Attachment = ระดับความผูกพันเชิงตัวละคร ไม่ใช่ความโรแมนติก"
     )

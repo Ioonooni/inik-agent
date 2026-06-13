@@ -45,6 +45,9 @@ def test_relationship():
     assert updated["trust"] > 0
     assert updated["familiarity"] > 0
     assert updated["curiosity"] > 0
+    assert updated["attachment"] > 0
+    assert updated["relationship_score"] > 0
+    assert updated["relationship_stage"] in ["Observer", "Gremlin", "Treasure"]
 
 
 def test_reward_redemption():
