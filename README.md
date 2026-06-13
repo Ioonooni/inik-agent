@@ -388,3 +388,7 @@ Recently Completed:
 * Relationship Decay
 * Re-engagement Context
 * Stronger stage-dependent behavior
+* Inside Joke V1
+* Shared Memory Callback Rules
+* Relationship Timeline Snapshots
+* Personality Evolution Topic Rules

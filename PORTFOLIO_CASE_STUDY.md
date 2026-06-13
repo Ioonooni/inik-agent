@@ -98,6 +98,9 @@ Implemented through:
 * User Archetype Detection
 * Re-engagement Context
 * Shared Memory Prompting
+* Inside Joke V1
+* Relationship Timeline Snapshots
+* Personality Evolution Topic Rules
 
 ---
 

@@ -65,6 +65,9 @@ Phase 2B should continue with Dynamic Personality Evolution:
 - Relationship activity timeline
 - User interest summary
 - Re-engagement behavior tuning
+- Inside joke behavior refinement
+- Relationship timeline event snapshots
+- Personality evolution from recurring topics
 
 Avoid starting:
 - LangChain
