@@ -20,6 +20,9 @@ def calculate_analytics(session_state):
     trust = relationship_state.get("trust", 0)
     familiarity = relationship_state.get("familiarity", 0)
     curiosity = relationship_state.get("curiosity", 0)
+    attachment = relationship_state.get("attachment", 0)
+    relationship_score = relationship_state.get("relationship_score", 0)
+    relationship_stage = relationship_state.get("relationship_stage", "Observer")
 
     memory_fact_count = len(user_facts)
     inventory_count = len(inventory)
@@ -29,9 +32,11 @@ def calculate_analytics(session_state):
         int(
             (intimacy_score * 0.35)
             + (points * 2)
-            + (trust * 0.2)
-            + (familiarity * 0.25)
-            + (curiosity * 0.2)
+            + (trust * 0.18)
+            + (familiarity * 0.22)
+            + (curiosity * 0.18)
+            + (attachment * 0.12)
+            + (relationship_score * 0.15)
             + (memory_fact_count * 5)
             + (inventory_count * 3)
         )
@@ -47,6 +52,9 @@ def calculate_analytics(session_state):
         "trust": trust,
         "familiarity": familiarity,
         "curiosity": curiosity,
+        "attachment": attachment,
+        "relationship_score": relationship_score,
+        "relationship_stage": relationship_stage,
         "intimacy_score": intimacy_score,
         "points": points,
     }
@@ -73,4 +81,7 @@ System Summary:
 - Inventory Items: {analytics["inventory_count"]}
 - Engagement Score: {analytics["engagement_score"]}
 - Engagement Label: {get_engagement_label(analytics["engagement_score"])}
+- Relationship Stage: {analytics.get("relationship_stage", "Observer")}
+- Relationship Score: {analytics.get("relationship_score", 0)}
+- Attachment: {analytics.get("attachment", 0)}
 """

@@ -644,6 +644,9 @@ def main_app():
         st.metric("Total Messages", analytics["total_messages"])
         st.metric("Memory Facts", analytics["memory_fact_count"])
         st.metric("Inventory Items", analytics["inventory_count"])
+        st.metric("Relationship Stage", analytics.get("relationship_stage", "Observer"))
+        st.metric("Relationship Score", analytics.get("relationship_score", 0))
+        st.metric("Attachment", analytics.get("attachment", 0))
 
         with st.expander("System Summary"):
             st.text(get_system_summary(analytics))
@@ -726,6 +729,45 @@ def main_app():
                 st.error(event_result.get("error"))
         else:
             st.write("ยังไม่มี event log")
+
+        st.divider()
+        st.subheader("Relationship Timeline")
+
+        relationship_state = st.session_state.get("relationship_state", {})
+        st.metric(
+            "Relationship Stage",
+            relationship_state.get("relationship_stage", "Observer")
+        )
+        st.metric(
+            "Relationship Score",
+            relationship_state.get("relationship_score", 0)
+        )
+        st.write(
+            f"Trust: {relationship_state.get('trust', 0)} | "
+            f"Familiarity: {relationship_state.get('familiarity', 0)} | "
+            f"Curiosity: {relationship_state.get('curiosity', 0)} | "
+            f"Attachment: {relationship_state.get('attachment', 0)}"
+        )
+
+        if event_result:
+            st.caption("Last event relationship snapshot")
+            event_state = (
+                event_result
+                .get("result", {})
+                .get("state", {})
+                .get("relationship_state", {})
+            )
+            if not event_state:
+                event_state = (
+                    event_result
+                    .get("state", {})
+                    .get("relationship_state", {})
+                )
+
+            if event_state:
+                st.json(event_state)
+            else:
+                st.write("ยังไม่มี relationship snapshot ใน event ล่าสุด")
 
         redemption_result = st.session_state.get("last_redemption_result")
 
