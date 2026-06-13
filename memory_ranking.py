@@ -53,11 +53,20 @@ def recency_score(memory: dict) -> float:
         return 0.0
 
 
+def importance_score(memory: dict) -> float:
+    metadata = memory.get("metadata") or {}
+
+    try:
+        return float(memory.get("importance", metadata.get("importance", 0)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def memory_score(memory: dict, query: str = "") -> float:
     score = 0.0
 
     score += relevance_score(memory, query=query)
-    score += float(memory.get("importance", 0))
+    score += importance_score(memory)
     score += float(memory.get("hit_count", 0)) * 0.5
     score += recency_score(memory)
 
