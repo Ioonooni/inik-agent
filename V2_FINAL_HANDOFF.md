@@ -78,3 +78,10 @@ Avoid starting:
 - Multi-user scale work
 
 unless explicitly required.
+
+
+## Post-V2 Character Intelligence Additions
+
+- Topic affinity scoring
+- Memory importance metadata
+- Memory importance ranking

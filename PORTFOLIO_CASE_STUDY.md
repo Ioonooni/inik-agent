@@ -330,3 +330,10 @@ The central question is:
 How can AI characters build familiarity, continuity, and long-term engagement with people?
 
 The current prototype serves as the first step toward answering that question.
+
+
+## Latest Character Intelligence Additions
+
+* Topic Affinity Engine
+* Memory Importance Metadata
+* Memory Importance Ranking

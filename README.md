@@ -393,3 +393,10 @@ Recently Completed:
 * Relationship Timeline Snapshots
 * Personality Evolution Topic Rules
 * Topic Affinity Engine
+
+
+## Latest Character Intelligence Additions
+
+* Topic Affinity Engine
+* Memory Importance Metadata
+* Memory Importance Ranking
