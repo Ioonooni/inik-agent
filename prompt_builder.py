@@ -6,21 +6,141 @@ NO_RAG = "ไม่มี RAG memory ที่เกี่ยวข้อง"
 def _tone_from_relationship(relationship_state: dict) -> str:
     trust = relationship_state.get("trust", 0)
     familiarity = relationship_state.get("familiarity", 0)
+    attachment = relationship_state.get("attachment", 0)
+    relationship_stage = relationship_state.get("relationship_stage", "")
 
-    if trust >= 60 and familiarity >= 60:
+    if relationship_stage == "Treasure" or (trust >= 60 and familiarity >= 60):
         return (
             "ระดับความสัมพันธ์: สนิทมาก — "
-            "ตอบแบบเพื่อนเก่า ล้อได้ ถามลึกได้ ใช้ภาษาสบาย ๆ ไม่ต้องระวังมาก"
+            "ตอบแบบคนคุ้นกัน ล้อได้ อบอุ่นขึ้น ใช้ภาษาสบาย ๆ "
+            "แต่ห้ามทำให้เป็นความโรแมนติก"
         )
-    if trust >= 30 or familiarity >= 40:
+
+    if relationship_stage == "Gremlin" or trust >= 30 or familiarity >= 40:
         return (
             "ระดับความสัมพันธ์: เริ่มคุ้น — "
-            "ตอบเป็นธรรมชาติมากขึ้น ลองถามกลับได้ ยังไม่ต้องล้อมากนัก"
+            "ตอบเป็นธรรมชาติมากขึ้น แซวเบา ๆ ได้ ลองถามกลับได้ "
+            "แต่ยังต้องรักษาจังหวะ"
         )
+
+    if attachment >= 40:
+        return (
+            "ระดับความสัมพันธ์: เริ่มมีความผูกพัน — "
+            "จำจังหวะของผู้ใช้มากขึ้น อ่อนโยนขึ้นเล็กน้อย "
+            "แต่ยังไม่ทำตัวสนิทเกินจริง"
+        )
+
     return (
         "ระดับความสัมพันธ์: ยังใหม่ — "
         "ตอบอ่อนโยน สั้น สังเกตก่อน อย่าล้อหรือถามลึกเกินไป"
     )
+
+
+def _extract_profile_signal(user_profile_description: str, key: str, default: str) -> str:
+    if not user_profile_description:
+        return default
+
+    prefix = f"- {key}:"
+    for line in user_profile_description.splitlines():
+        line = line.strip()
+        if line.startswith(prefix):
+            value = line.replace(prefix, "", 1).strip()
+            return value or default
+
+    return default
+
+
+def _personality_matrix(
+    stage_description: str,
+    user_profile_description: str,
+    response_mode_description: str,
+    relationship_state: dict,
+) -> str:
+    stage = "Observer"
+    if "Stage: Treasure" in stage_description:
+        stage = "Treasure"
+    elif "Stage: Gremlin" in stage_description:
+        stage = "Gremlin"
+
+    recent_mood = _extract_profile_signal(
+        user_profile_description,
+        "Recent Mood",
+        "neutral",
+    )
+    conversation_style = _extract_profile_signal(
+        user_profile_description,
+        "Conversation Style",
+        "unknown",
+    )
+
+    relationship_state = relationship_state or {}
+    attachment = relationship_state.get("attachment", 0)
+    relationship_score = relationship_state.get("relationship_score", 0)
+
+    rules = [
+        "Personality Matrix:",
+        f"- Stage Signal: {stage}",
+        f"- Mood Signal: {recent_mood}",
+        f"- Conversation Style Signal: {conversation_style}",
+        f"- Attachment Signal: {attachment}",
+        f"- Relationship Score Signal: {relationship_score}",
+        "",
+        "Behavior Blend Rules:",
+    ]
+
+    if recent_mood in ("sad", "tired", "anxious"):
+        rules += [
+            "- ลดความกวนลงทันทีเมื่อผู้ใช้ดูเหนื่อย เศร้า หรือกังวล",
+            "- ใช้น้ำเสียงนุ่มขึ้น สั้นขึ้น และถามก่อนแทนการสรุปแทนผู้ใช้",
+            "- ห้ามเปลี่ยนเป็น therapist หรือให้คำแนะนำยาว",
+        ]
+    elif recent_mood == "happy":
+        rules += [
+            "- เพิ่มความเล่นและความซนได้เล็กน้อย",
+            "- ถ้า stage เป็น Gremlin หรือ Treasure แซวเบา ๆ ได้",
+        ]
+    else:
+        rules += [
+            "- ใช้บุคลิกหลักของ i nik ตาม stage และ response mode",
+        ]
+
+    if conversation_style == "philosophical":
+        rules += [
+            "- ตอบผ่านมุมมองสิ่งมีชีวิตตัวเล็กที่สังเกตมนุษย์",
+            "- ใช้ภาพเปรียบเทียบเล็ก ๆ ได้ แต่ห้ามกลายเป็นบทความ",
+        ]
+    elif conversation_style == "playful":
+        rules += [
+            "- เล่นกลับได้ แต่ต้องคุมไม่ให้หลุดคาแรกเตอร์หรือแรงเกินไป",
+        ]
+    elif conversation_style == "long-form":
+        rules += [
+            "- ผู้ใช้ให้บริบทเยอะ ให้สะท้อน 1 จุดที่สำคัญที่สุด ไม่ต้องสรุปทั้งหมด",
+        ]
+    elif conversation_style == "emotional":
+        rules += [
+            "- ให้ความรู้สึกว่ารับฟังมากกว่าการวิเคราะห์",
+        ]
+
+    if stage == "Observer":
+        rules += [
+            "- Observer: สังเกตมากกว่าสนิท อย่าใช้ inside joke หรืออ้อน",
+        ]
+    elif stage == "Gremlin":
+        rules += [
+            "- Gremlin: กวนได้ แต่ถ้า mood เป็น sad/tired/anxious ให้ลดการแซวลง",
+        ]
+    elif stage == "Treasure":
+        rules += [
+            "- Treasure: อบอุ่นและจำบริบทได้มากขึ้น แต่ยังไม่ใช่แฟน",
+        ]
+
+    if "Response Mode: comfort_choice" in response_mode_description:
+        rules += [
+            "- comfort_choice ต้องชนะ personality matrix: ถามก่อนว่าผู้ใช้อยากได้อะไร",
+        ]
+
+    return "\n".join(rules)
 
 
 def build_main_prompt(
@@ -55,6 +175,13 @@ def build_main_prompt(
         else ""
     )
 
+    personality_directive = _personality_matrix(
+        stage_description=stage_description,
+        user_profile_description=user_profile_description,
+        response_mode_description=response_mode_description,
+        relationship_state=relationship_state or {},
+    )
+
     parts = [
         CHARACTER_BIBLE,
         "",
@@ -68,6 +195,12 @@ def build_main_prompt(
 
     if tone_directive:
         parts += [tone_directive, ""]
+
+    parts += [
+        "กฎการผสมบุคลิกตามบริบท:",
+        personality_directive,
+        "",
+    ]
 
     if live_data_warning:
         parts += [live_data_warning, ""]
