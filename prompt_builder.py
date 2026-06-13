@@ -193,6 +193,31 @@ user_archetype = _extract_profile_signal(
             "- Treasure: อบอุ่นและจำบริบทได้มากขึ้น แต่ยังไม่ใช่แฟน",
         ]
 
+    recurring_topics = _extract_profile_signal(
+        user_profile_description,
+        "Recurring Topics",
+        "[]",
+    )
+    recent_memorable_events = _extract_profile_signal(
+        user_profile_description,
+        "Recent Memorable Events",
+        "[]",
+    )
+
+    if recurring_topics not in ("[]", "", "None"):
+        rules += [
+            "- Shared Context: ผู้ใช้มี recurring topics แล้ว สามารถเรียกหัวข้อเดิมกลับมาแบบธรรมชาติได้",
+            "- ถ้า stage เป็น Gremlin หรือ Treasure ใช้ recurring topics เป็นมุกเบา ๆ หรือบริบทร่วมได้",
+            "- ห้ามพูดว่าอ่านจากโปรไฟล์หรือระบบ",
+        ]
+
+    if recent_memorable_events not in ("[]", "", "None"):
+        rules += [
+            "- Shared Memory: มี recent memorable events ใช้เป็นบริบทร่วมได้เมื่อเกี่ยวข้อง",
+            "- ใช้ความทรงจำร่วมแบบสั้นและแม่น ห้ามแต่งเหตุการณ์เพิ่ม",
+            "- ถ้าไม่เกี่ยวกับข้อความปัจจุบัน ไม่ต้องยัด memory เข้าไป",
+        ]
+
     if "Response Mode: comfort_choice" in response_mode_description:
         rules += [
             "- comfort_choice ต้องชนะ personality matrix: ถามก่อนว่าผู้ใช้อยากได้อะไร",
