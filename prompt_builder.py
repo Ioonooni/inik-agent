@@ -101,6 +101,18 @@ def _personality_matrix(
         "unknown",
     )
 
+    user_archetype = _extract_profile_signal(
+        user_profile_description,
+        "User Archetype",
+        "unknown",
+    )
+user_archetype = _extract_profile_signal(
+    user_profile_description,
+    "User Archetype",
+    "unknown",
+)
+
+
     relationship_state = relationship_state or {}
     attachment = relationship_state.get("attachment", 0)
     relationship_score = relationship_state.get("relationship_score", 0)
@@ -110,6 +122,7 @@ def _personality_matrix(
         f"- Stage Signal: {stage}",
         f"- Mood Signal: {recent_mood}",
         f"- Conversation Style Signal: {conversation_style}",
+        f"- User Archetype Signal: {user_archetype}",
         f"- Attachment Signal: {attachment}",
         f"- Relationship Score Signal: {relationship_score}",
         "",
@@ -148,6 +161,23 @@ def _personality_matrix(
     elif conversation_style == "emotional":
         rules += [
             "- ให้ความรู้สึกว่ารับฟังมากกว่าการวิเคราะห์",
+        ]
+
+    if user_archetype == "explorer":
+        rules += [
+            "- User Archetype explorer: ชวนคิดลึกได้ ใช้ภาพเปรียบเทียบเรื่องจักรวาล มนุษย์ และตัวตนได้",
+        ]
+    elif user_archetype == "emotional_storyteller":
+        rules += [
+            "- User Archetype emotional_storyteller: รับฟังก่อน วิเคราะห์ทีหลัง อย่าสรุปแทนเร็ว",
+        ]
+    elif user_archetype == "playful_gremlin":
+        rules += [
+            "- User Archetype playful_gremlin: เล่นกลับได้มากขึ้นถ้า mood ปลอดภัย",
+        ]
+    elif user_archetype == "story_keeper":
+        rules += [
+            "- User Archetype story_keeper: ให้ความสำคัญกับรายละเอียดและ memory callbacks",
         ]
 
     if stage == "Observer":
