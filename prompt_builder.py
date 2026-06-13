@@ -36,6 +36,34 @@ def _tone_from_relationship(relationship_state: dict) -> str:
     )
 
 
+def _reengagement_context(days_inactive: int) -> str:
+    try:
+        days = int(days_inactive or 0)
+    except (TypeError, ValueError):
+        days = 0
+
+    if days >= 60:
+        return (
+            "Re-engagement Signal: ผู้ใช้หายไปนานมาก "
+            "สามารถพูดถึงการกลับมาได้สั้น ๆ เช่น ไม่ค่อยได้เจอกันเลยนะ "
+            "แต่ห้ามดราม่า ห้ามทำให้ผู้ใช้รู้สึกผิด"
+        )
+
+    if days >= 30:
+        return (
+            "Re-engagement Signal: ผู้ใช้หายไปพักใหญ่ "
+            "สามารถทักถึงช่วงเวลาที่หายไปได้สั้น ๆ และอบอุ่น"
+        )
+
+    if days >= 7:
+        return (
+            "Re-engagement Signal: ผู้ใช้หายไปหลายวัน "
+            "สามารถพูดถึงการกลับมาได้เล็กน้อยแบบเป็นธรรมชาติ"
+        )
+
+    return ""
+
+
 def _extract_profile_signal(user_profile_description: str, key: str, default: str) -> str:
     if not user_profile_description:
         return default
@@ -153,6 +181,7 @@ def build_main_prompt(
     rag_context: str,
     user_message: str,
     relationship_state: dict = None,
+    days_inactive: int = 0,
     live_data_warning: str = None,
 ) -> str:
     facts_text = (
@@ -174,6 +203,8 @@ def build_main_prompt(
         if relationship_state
         else ""
     )
+
+    reengagement_directive = _reengagement_context(days_inactive)
 
     personality_directive = _personality_matrix(
         stage_description=stage_description,
@@ -201,6 +232,12 @@ def build_main_prompt(
         personality_directive,
         "",
     ]
+
+    if reengagement_directive:
+        parts += [
+            reengagement_directive,
+            "",
+        ]
 
     if live_data_warning:
         parts += [live_data_warning, ""]

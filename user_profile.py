@@ -5,11 +5,12 @@ def create_user_profile():
     return {
         "recent_mood": "neutral",
         "conversation_style": "unknown",
+        "user_archetype": "unknown",
         "recurring_topics": [],
         "memorable_events": [],
         "total_messages": 0,
         "total_visits": 0,
-        "last_interaction_date": None
+        "last_interaction_date": None,
     }
 
 
@@ -80,10 +81,11 @@ def detect_topics(user_message):
         "memory": ["จำ", "ความทรงจำ", "ลืม"],
         "human": ["มนุษย์", "คน", "ชีวิต"],
         "emotion": ["รู้สึก", "เศร้า", "เหนื่อย", "ดีใจ", "กลัว", "เครียด"],
-        "universe": ["จักรวาล", "ดาว", "โลก", "อวกาศ"],
+        "universe": ["จักรวาล", "ดาว", "โลก", "อวกาศ", "หลุมดำ"],
         "identity": ["ตัวตน", "ฉันเป็น", "นิสัย", "บุคลิก"],
         "relationship": ["ความสัมพันธ์", "สนิท", "ไว้ใจ", "คิดถึง"],
         "reward": ["รางวัล", "แต้ม", "ของสะสม", "inventory"],
+        "play": ["555", "ขำ", "กวน", "แซว", "เล่น"],
     }
 
     detected = []
@@ -93,6 +95,59 @@ def detect_topics(user_message):
             detected.append(topic)
 
     return detected
+
+
+def detect_user_archetype(conversation_style, recurring_topics):
+    topics = set(recurring_topics or [])
+
+    if conversation_style == "philosophical" or topics.intersection({"universe", "identity", "human"}):
+        return "explorer"
+
+    if conversation_style == "emotional" or "emotion" in topics:
+        return "emotional_storyteller"
+
+    if conversation_style == "playful" or "play" in topics:
+        return "playful_gremlin"
+
+    if conversation_style == "long-form" or "memory" in topics:
+        return "story_keeper"
+
+    return "casual_visitor"
+
+
+def describe_user_archetype(user_archetype):
+    if user_archetype == "explorer":
+        return (
+            "User Archetype: explorer — "
+            "ผู้ใช้ชอบคำถามใหญ่ จักรวาล ความหมาย ตัวตน หรือมุมมองเชิงลึก "
+            "ควรตอบด้วยภาพเปรียบเทียบและคำถามชวนคิด"
+        )
+
+    if user_archetype == "emotional_storyteller":
+        return (
+            "User Archetype: emotional_storyteller — "
+            "ผู้ใช้มีแนวโน้มเล่าอารมณ์หรือเรื่องชีวิต "
+            "ควรฟังให้มากกว่าวิเคราะห์ และอย่ารีบสรุปแทน"
+        )
+
+    if user_archetype == "playful_gremlin":
+        return (
+            "User Archetype: playful_gremlin — "
+            "ผู้ใช้ชอบจังหวะเล่น แซว หรือความกวน "
+            "สามารถเล่นกลับได้ถ้า mood ไม่เศร้าหรือเหนื่อย"
+        )
+
+    if user_archetype == "story_keeper":
+        return (
+            "User Archetype: story_keeper — "
+            "ผู้ใช้ให้บริบทเยอะหรือเล่าเรื่องยาว "
+            "ควรจำรายละเอียดสำคัญและสะท้อนจุดเดียวที่มีน้ำหนัก"
+        )
+
+    return (
+        "User Archetype: casual_visitor — "
+        "ผู้ใช้ยังไม่มีแพตเทิร์นชัดเจน ควรสังเกตก่อนและตอบอย่างเป็นธรรมชาติ"
+    )
 
 
 def update_user_profile(user_message, user_profile):
@@ -117,6 +172,11 @@ def update_user_profile(user_message, user_profile):
 
     user_profile["recurring_topics"] = user_profile["recurring_topics"][-10:]
 
+    user_profile["user_archetype"] = detect_user_archetype(
+        user_profile.get("conversation_style", "unknown"),
+        user_profile.get("recurring_topics", []),
+    )
+
     if len(user_message.strip()) >= 100:
         memorable_event = user_message.strip()
 
@@ -133,6 +193,7 @@ def describe_user_profile(user_profile):
 
     recent_mood = user_profile.get("recent_mood", "neutral")
     conversation_style = user_profile.get("conversation_style", "unknown")
+    user_archetype = user_profile.get("user_archetype", "unknown")
     recurring_topics = user_profile.get("recurring_topics", [])
     memorable_events = user_profile.get("memorable_events", [])
     total_messages = user_profile.get("total_messages", 0)
@@ -140,26 +201,19 @@ def describe_user_profile(user_profile):
     last_interaction_date = user_profile.get("last_interaction_date")
 
     recent_memorable_events = memorable_events[-2:] if memorable_events else []
+    archetype_description = describe_user_archetype(user_archetype)
 
     return f"""
 User Profile:
 - Recent Mood: {recent_mood}
 - Conversation Style: {conversation_style}
+- User Archetype: {user_archetype}
 - Recurring Topics: {recurring_topics}
 - Memorable Events Count: {len(memorable_events)}
 - Recent Memorable Events: {recent_memorable_events}
 - Total User Messages: {total_messages}
 - Total Visits: {total_visits}
 - Last Interaction Date: {last_interaction_date}
-"""
 
-    return f"""
-User Profile:
-- Recent Mood: {recent_mood}
-- Conversation Style: {conversation_style}
-- Recurring Topics: {recurring_topics}
-- Memorable Events Count: {len(memorable_events)}
-- Total User Messages: {total_messages}
-- Total Visits: {total_visits}
-- Last Interaction Date: {last_interaction_date}
+{archetype_description}
 """

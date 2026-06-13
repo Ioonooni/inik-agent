@@ -319,6 +319,9 @@ def init_user_session():
         except Exception:
             pass
 
+    if "days_inactive" not in st.session_state:
+        st.session_state.days_inactive = 0
+
     st.session_state.inventory = st.session_state.persistent_memory.get(
         "inventory",
         []
@@ -963,6 +966,7 @@ def main_app():
                 rag_context=route_decision.rag_context,
                 user_message=user_message,
                 relationship_state=st.session_state.relationship_state,
+                days_inactive=st.session_state.get("days_inactive", 0),
                 live_data_warning=route_decision.live_data_warning,
             )
 
