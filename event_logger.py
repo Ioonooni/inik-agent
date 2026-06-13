@@ -57,6 +57,12 @@ def build_base_event(event_type, session_state, extra=None):
                 "trust": relationship_state.get("trust", 0),
                 "familiarity": relationship_state.get("familiarity", 0),
                 "curiosity": relationship_state.get("curiosity", 0),
+                "attachment": relationship_state.get("attachment", 0),
+                "relationship_score": relationship_state.get("relationship_score", 0),
+                "relationship_stage": relationship_state.get(
+                    "relationship_stage",
+                    "Observer"
+                ),
             },
             "user_profile": {
                 "recent_mood": user_profile.get("recent_mood", "neutral"),
