@@ -270,6 +270,30 @@ The system remains usable even during API issues.
 
 ---
 
+# Recent Technical Milestone — Runtime Character System
+
+The latest milestone moved i nik from a partially mock-driven prototype into a persistent runtime character system.
+
+Implemented improvements:
+
+* Persistent conversation history across refreshes
+* Runtime relationship state persistence
+* Dedicated `/api/state` endpoint
+* Supabase-backed user state
+* Dynamic Profile page connected to backend state
+* Dynamic Journey page connected to backend state
+* Runtime Memory Shelf powered by user facts and conversation fragments
+* Fact extraction cleanup for names and preferences
+* Lore Bible V2 integration
+* Character identity protection rules
+* Hidden Blue Mint / ฟ้ามิ้น lore Easter Egg
+
+This milestone improved the prototype from a static character interface into a more continuous character experience.
+
+The character can now maintain state, remember recent conversation context, preserve relationship progression, and protect its core lore identity across user sessions.
+
+---
+
 # Results
 
 Completed:
@@ -280,6 +304,10 @@ Completed:
 * Workflow automation
 * Autonomous behaviors
 * Event infrastructure
+* Runtime state persistence
+* Dynamic frontend state integration
+* Lore-aware character identity rules
+* End-to-end persistence testing
 
 The prototype successfully demonstrates that a character-centered AI architecture can be implemented using production-inspired components while remaining lightweight enough for rapid experimentation.
 
@@ -303,7 +331,9 @@ Multi-stage familiarity progression.
 
 ## Lore-Aware Memory
 
-Connect memories to character worldbuilding.
+Partially implemented through Lore Bible V2, identity protection rules, and hidden lore-triggered dialogue.
+
+Future work should connect memory fragments more deeply to Nevabatu lore, character history, and collectible story events.
 
 ---
 
