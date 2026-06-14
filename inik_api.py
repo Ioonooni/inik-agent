@@ -55,8 +55,8 @@ def chat(req: ChatRequest):
     points = int(memory.get("points", 0) or 0)
     relationship_state = memory.get("relationship_state", create_relationship_state())
 
-    messages = memory.get("messages", [])
-    messages.append({"role": "user", "content": user_message})
+    recent_messages = user_profile.get("recent_messages", [])
+    recent_messages.append({"role": "user", "content": user_message})
 
     intimacy_score = min(100, intimacy_score + 10)
     points += 1
@@ -75,7 +75,7 @@ def chat(req: ChatRequest):
     response_mode = detect_response_mode(user_message)
     response_mode_description = describe_response_mode(response_mode)
 
-    chat_history = build_chat_history(messages, limit=10)
+    chat_history = build_chat_history(recent_messages, limit=10)
 
     prompt = build_main_prompt(
         stage_description=stage_description,
@@ -100,7 +100,9 @@ def chat(req: ChatRequest):
         except Exception as error:
             reply = f"สัญญาณจากจักรวาลสะดุด: {error}"
 
-    messages.append({"role": "assistant", "content": reply})
+    recent_messages.append({"role": "assistant", "content": reply})
+    recent_messages = recent_messages[-20:]
+    user_profile["recent_messages"] = recent_messages
 
     save_memory(
         user_facts,
@@ -122,5 +124,31 @@ def chat(req: ChatRequest):
             "relationship_state": relationship_state,
             "user_profile": user_profile,
             "user_facts": user_facts,
+            "recent_messages": recent_messages,
         },
+    }
+
+
+@app.get("/api/state")
+def get_state(user_id: str = "web_demo_user"):
+    memory = load_memory(user_id=user_id)
+
+    user_facts = memory.get("user_facts", {})
+    user_profile = normalize_user_profile(memory.get("user_profile", create_user_profile()))
+    intimacy_score = int(memory.get("intimacy_score", 0) or 0)
+    points = int(memory.get("points", 0) or 0)
+    relationship_state = memory.get("relationship_state", create_relationship_state())
+    recent_messages = user_profile.get("recent_messages", [])
+
+    stage = get_stage(intimacy_score)
+
+    return {
+        "user_id": user_id,
+        "stage": stage,
+        "intimacy_score": intimacy_score,
+        "points": points,
+        "relationship_state": relationship_state,
+        "user_profile": user_profile,
+        "user_facts": user_facts,
+        "recent_messages": recent_messages,
     }
