@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import os
 import streamlit as st
 from supabase import create_client
 
@@ -8,6 +9,17 @@ from persistent_memory import get_default_memory
 
 TABLE_NAME = "i_nik_memory"
 DEMO_USER_ID = "demo_user"
+
+
+def get_secret_value(name):
+    value = os.getenv(name)
+    if value:
+        return value
+
+    try:
+        return st.secrets.get(name)
+    except Exception:
+        return None
 
 
 def normalize_supabase_url(url):
@@ -28,7 +40,7 @@ def normalize_supabase_url(url):
 
 
 def get_redacted_supabase_url():
-    url = st.secrets.get("SUPABASE_URL")
+    url = get_secret_value("SUPABASE_URL")
 
     if not url:
         return "SUPABASE_URL missing"
@@ -41,8 +53,8 @@ def get_redacted_supabase_url():
 
 
 def get_supabase_client():
-    url = st.secrets.get("SUPABASE_URL")
-    key = st.secrets.get("SUPABASE_KEY")
+    url = get_secret_value("SUPABASE_URL")
+    key = get_secret_value("SUPABASE_KEY")
 
     if not url or not key:
         raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY in Streamlit secrets")
