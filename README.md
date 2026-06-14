@@ -223,7 +223,12 @@ Create an automation-ready backend for future CRM, analytics, loyalty, and workf
 
 Frontend
 
-* Streamlit
+* React
+* Vite
+
+Backend
+
+* FastAPI
 
 AI
 
@@ -237,22 +242,14 @@ Workflow Automation
 
 * n8n
 
-Language
+Languages
 
 * Python
-
-Deployment
-
-* Streamlit Community Cloud
+* TypeScript
 
 Development Environment
 
 * GitHub Codespaces
-
-Version Control
-
-* Git
-* GitHub
 
 ---
 
@@ -330,6 +327,26 @@ Goals:
 
 ---
 
+## Character Runtime Architecture
+
+The current version of i nik uses a persistent runtime character architecture.
+
+Core runtime systems:
+
+* Conversation Persistence
+* User Fact Extraction
+* Relationship State Engine
+* Profile State Tracking
+* Supabase Memory Gateway
+* Runtime State API
+* Lore Bible System
+* Character Identity Protection
+* Reward and Inventory Systems
+
+These systems allow the character to maintain continuity across refreshes and future sessions while preserving character consistency.
+
+---
+
 ## Why This Project Matters
 
 Most AI projects stop at conversation.
@@ -353,50 +370,28 @@ The long-term vision is a persistent character capable of existing across conver
 
 ---
 
-## Current Status
+## Recent Milestone
 
-Prototype Status: Stable
+A major milestone was completed by moving i nik from a partially mock-driven prototype into a persistent runtime character system.
 
 Completed:
 
-* Planner
-* Tool Routing
-* Memory V2
-* Supabase Memory
-* Autonomous Layer V1
-* Reward Shop
-* Redemption System
-* Event Logging
-* n8n Integration
-* Smoke Test Suite
+* Persistent conversation history
+* Runtime relationship state persistence
+* Supabase-backed user state
+* Dynamic Profile page
+* Dynamic Journey page
+* Runtime Memory Shelf
+* Fact extraction improvements
+* Lore Bible V2 integration
+* Identity protection rules
+* Hidden lore-triggered dialogue events
 
-Repository State:
+Verified through end-to-end testing:
 
-* All major Phase 1 milestones completed
-* Smoke checks passing
-* Git status clean
-
-Current Focus:
-
-Phase 2B — Dynamic Personality Evolution
-
-Recently Completed:
-
-* Adaptive Personality Matrix
-* User Archetype Detection
-* Shared Memory Prompting
-* Relationship Decay
-* Re-engagement Context
-* Stronger stage-dependent behavior
-* Inside Joke V1
-* Shared Memory Callback Rules
-* Relationship Timeline Snapshots
-* Personality Evolution Topic Rules
-* Topic Affinity Engine
-
-
-## Latest Character Intelligence Additions
-
-* Topic Affinity Engine
-* Memory Importance Metadata
-* Memory Importance Ranking
+* Refresh persistence
+* State persistence
+* Memory recall
+* Runtime API state loading
+* Character consistency
+* Lore identity locking
