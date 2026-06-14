@@ -16,6 +16,24 @@ def _record_history(facts: dict, key: str, value: str) -> None:
 def clean_value(value):
     value = value.strip()
 
+    # Cut trailing question/comment fragments that can get captured by broad Thai patterns.
+    stop_phrases = [
+        " เคยบอก",
+        " บอกยัง",
+        " บอกรึยัง",
+        " บอกหรือยัง",
+        " จำได้ไหม",
+        " จำได้มั้ย",
+        " รู้ไหม",
+        " รู้มั้ย",
+        " ใช่ไหม",
+        " ใช่มั้ย",
+    ]
+
+    for phrase in stop_phrases:
+        if phrase in value:
+            value = value.split(phrase, 1)[0]
+
     endings = [
         "นะ", "น้า", "จ้า", "จ่ะ", "ค่ะ", "ครับ", "คับ",
         "อะ", "อ่ะ", "เว้ย", "นะคะ", "นะครับ"
