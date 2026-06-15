@@ -12,6 +12,8 @@ from user_profile import create_user_profile, normalize_user_profile, update_use
 from modes import detect_response_mode, describe_response_mode
 from facts import extract_facts
 from prompt_builder import build_main_prompt
+from agent_router import detect_agent_handoff
+from rick_prompt import build_rick_prompt
 
 API_KEY = os.getenv("GEMINI_API_KEY")
 if API_KEY:
@@ -23,7 +25,20 @@ app = FastAPI(title="i nik Agent API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://inik.lovable.app", "*"],
+    allow_origin_regex=r"https://.*\.app\.github\.dev",
+    allow_origins=[
+        "https://inik.lovable.app",
+        "https://inik-cafe.vercel.app",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://localhost:5175",
+        "http://127.0.0.1:5175",
+        "http://localhost:5176",
+        "http://127.0.0.1:5176",
+    ],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -32,6 +47,7 @@ class ChatRequest(BaseModel):
     user_id: str = "web_demo_user"
     username: str = "traveler"
     message: str
+    agent_mode: str = "inik"
 
 @app.get("/health")
 def health():
@@ -77,21 +93,35 @@ def chat(req: ChatRequest):
 
     chat_history = build_chat_history(recent_messages, limit=10)
 
-    prompt = build_main_prompt(
-        stage_description=stage_description,
-        relationship_description=relationship_description,
-        user_profile_description=user_profile_description,
-        response_mode_description=response_mode_description,
-        chat_history=chat_history,
-        user_facts=user_facts,
-        rag_context="",
-        user_message=user_message,
-        relationship_state=relationship_state,
-        days_inactive=0,
-        live_data_warning=None,
-    )
+    agent_mode = (req.agent_mode or "inik").strip().lower()
+    handoff_suggestion = detect_agent_handoff(user_message)
 
-    if not API_KEY:
+    if agent_mode == "rick_royce":
+        prompt = build_rick_prompt(
+            user_profile_description=user_profile_description,
+            chat_history=chat_history,
+            user_facts=user_facts,
+            rag_context="",
+            user_message=user_message,
+        )
+    else:
+        prompt = build_main_prompt(
+            stage_description=stage_description,
+            relationship_description=relationship_description,
+            user_profile_description=user_profile_description,
+            response_mode_description=response_mode_description,
+            chat_history=chat_history,
+            user_facts=user_facts,
+            rag_context="",
+            user_message=user_message,
+            relationship_state=relationship_state,
+            days_inactive=0,
+            live_data_warning=None,
+        )
+
+    if agent_mode != "rick_royce" and handoff_suggestion:
+        reply = handoff_suggestion.message
+    elif not API_KEY:
         reply = "สัญญาณ Gemini ยังไม่ได้ตั้งค่า GEMINI_API_KEY"
     else:
         try:
@@ -114,9 +144,20 @@ def chat(req: ChatRequest):
         user_id=user_id,
     )
 
+    suggested_agent = None
+    if agent_mode != "rick_royce" and handoff_suggestion:
+        suggested_agent = {
+            "agent": handoff_suggestion.suggested_agent,
+            "confidence": handoff_suggestion.confidence,
+            "reason": handoff_suggestion.reason,
+            "message": handoff_suggestion.message,
+        }
+
     return {
         "reply": reply,
         "user_id": user_id,
+        "agent_mode": agent_mode,
+        "suggested_agent": suggested_agent,
         "state": {
             "stage": stage,
             "intimacy_score": intimacy_score,
