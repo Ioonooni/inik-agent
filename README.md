@@ -1,68 +1,102 @@
 # i nik
 
-AI Character Interaction System
+## Memory-Driven AI Character Platform
 
-i nik is a behavioral AI character prototype designed to explore how memory, relationship progression, gamification, and personality systems can create long-term engagement beyond traditional chatbots.
+i nik is a behavioral AI character platform designed to explore how memory, identity, relationship progression, and strategic reasoning can create long-term engagement beyond traditional chatbots.
 
-Instead of functioning as a simple assistant, i nik is designed as a persistent character that gradually develops familiarity with users through conversation history, memory systems, relationship signals, rewards, autonomous behaviors, and backend workflow automation.
+Rather than functioning as a task-oriented assistant, i nik is designed as a persistent AI system that develops familiarity with users over time through memory retrieval, profile understanding, relationship-state awareness, and contextual reasoning.
 
-This project serves as a prototype for future Character AI products, AI-native brand experiences, and relationship-driven digital companions.
+The project explores a broader product hypothesis:
+
+People rarely form attachment to interfaces.
+
+People form attachment to personalities, continuity, and remembered experiences.
+
+i nik serves as a prototype for future AI-native products including companion systems, tutoring systems, strategic advisors, language partners, and multi-agent experiences.
 
 ---
 
 ## Live Demo
 
-https://inik-ai-prototype-kqelfbrxvnbk3xtygziygn.streamlit.app/
+https://inik-cafe.vercel.app
 
 ---
 
 ## Vision
 
-Most AI assistants are designed to answer questions.
+Most AI products are optimized for question answering.
 
-i nik is designed to build familiarity.
+i nik is optimized for continuity.
 
-The project explores a different hypothesis:
-
-People rarely form emotional attachment to interfaces.
-
-People form attachment to characters.
-
-Instead of optimizing only for task completion, i nik is designed around:
+The project explores whether AI systems can create stronger long-term engagement through:
 
 * Memory
 * Familiarity
+* Identity
 * Relationship progression
 * Character consistency
-* Small rituals
-* Variable rewards
-* Long-term engagement
+* Personalized context
+* Behavioral design
+* Strategic reasoning
+* Long-term interaction loops
 
 The long-term vision is not a chatbot.
 
-The long-term vision is a persistent AI character capable of existing across products, communities, loyalty systems, games, physical stores, and future digital experiences.
+The long-term vision is a reusable AI platform capable of supporting multiple AI experiences through a shared memory, profile, and reasoning architecture.
 
 ---
 
-## What Makes This Different
+## Product Philosophy
 
-Most chatbot projects focus on:
+i nik is not designed as a single character application.
 
-* Question answering
-* Information retrieval
-* Productivity assistance
+The architecture is intended to support multiple AI products while sharing the same core infrastructure:
 
-i nik focuses on:
+* Memory Systems
+* User Profiles
+* Relationship Tracking
+* Retrieval Systems
+* Event Logging
+* Analytics
+* Workflow Automation
 
-* Character attachment
-* Relationship development
-* Personality progression
-* Behavioral design
-* User retention systems
-* Memory persistence
-* Gamified interaction loops
+This allows future products to reuse the same foundation while changing behavior, personality, and reasoning layers.
 
-The goal is to explore Character AI as a product category rather than a traditional chatbot experience.
+---
+
+## Heart and Mind Architecture
+
+The platform currently explores two cognitive modes:
+
+### i nik (Heart Layer)
+
+Responsibilities:
+
+* Memory Retrieval
+* User Understanding
+* Relationship Awareness
+* Personal Continuity
+* Emotional Context
+* Long-Term Familiarity
+
+i nik functions as the memory and continuity layer of the ecosystem.
+
+---
+
+### Rick Royce (Mind Layer)
+
+Responsibilities:
+
+* Strategic Reasoning
+* Tradeoff Analysis
+* Opportunity Cost Evaluation
+* Risk Assessment
+* Decision Support
+* Long-Term Thinking
+
+Rick Royce functions as a strategic reasoning layer rather than a separate product.
+
+The goal is to allow users to move between emotional context and strategic thinking while maintaining a shared identity, memory system, and relationship history.
 
 ---
 
@@ -72,35 +106,35 @@ User
 
 ↓
 
-Intent Classification
+React Frontend
 
 ↓
 
-Planner
+FastAPI Backend
 
 ↓
 
-Tool Layer
-
-├── Memory
-
-├── Relationship
-
-├── Inventory
-
-├── Rewards
-
-├── Analytics
-
-└── Event Logging
+Memory Retrieval Layer
 
 ↓
 
-Response Router
+Profile & Relationship State
 
 ↓
 
-Character Response
+Prompt Construction
+
+↓
+
+Reasoning Layer
+
+↓
+
+Google Gemini
+
+↓
+
+Response Generation
 
 ↓
 
@@ -112,27 +146,31 @@ Persistence Layer
 
 ↓
 
-Workflow Layer
+Event Logging
 
-└── n8n
+↓
+
+n8n Automation Layer
 
 ---
 
-## Current Features
+## Core Systems
 
 ### Memory System
 
-* Persistent memory
-* Supabase-backed storage
-* Memory ranking
-* Context retrieval
-* User profile memory
-* Fact memory
-* Conversation memory
+Features:
+
+* Persistent Memory
+* Supabase-backed Storage
+* Conversation Memory
+* Fact Memory
+* User Profile Memory
+* Context Retrieval
+* Runtime Memory Loading
 
 Purpose:
 
-Create continuity across interactions and reduce stateless chatbot behavior.
+Maintain continuity across sessions and reduce stateless chatbot behavior.
 
 ---
 
@@ -150,7 +188,7 @@ Features:
 
 Purpose:
 
-Improve memory precision, reduce low-value memory storage, prioritize meaningful user information, and retrieve the most relevant context during conversations.
+Improve memory precision, reduce low-value memory storage, and retrieve the most relevant information during conversations.
 
 This architecture moves beyond simple chat history storage toward a structured long-term memory system.
 
@@ -169,73 +207,15 @@ Tracks:
 
 Features:
 
-* Observer / Gremlin / Treasure progression
-* Relationship decay
-* Re-engagement awareness
+* Observer Progression
+* Gremlin Progression
+* Treasure Progression
+* Relationship Decay
+* Re-engagement Awareness
 
 Purpose:
 
-Allow the character to react differently depending on relationship history instead of treating every interaction equally.
-
----
-
-### Response Mode Engine
-
-Modes include:
-
-* normal_chat
-* philosophy_chat
-* comfort_choice
-* memory_callback
-* reward_event
-
-Purpose:
-
-Improve emotional pacing and maintain personality consistency across different contexts.
-
----
-
-### Reward System
-
-Features:
-
-* Point accumulation
-* Variable rewards
-* Inventory system
-* Reward redemption
-
-Purpose:
-
-Introduce progression loops and create lightweight rituals between the user and the character.
-
----
-
-### Autonomous Layer
-
-Features:
-
-* Relationship checkpoints
-* Reward suggestions
-* Memory prompts
-* Cooldown protection
-
-Purpose:
-
-Allow the character to occasionally initiate interaction rather than remaining fully reactive.
-
----
-
-### Event Logging
-
-Features:
-
-* Supabase event storage
-* n8n webhook integration
-* Structured event payloads
-
-Purpose:
-
-Create an automation-ready backend for future CRM, analytics, loyalty, and workflow systems.
+Allow the character to respond differently depending on relationship history rather than treating every conversation as a first interaction.
 
 ---
 
@@ -252,45 +232,137 @@ Features:
 
 Purpose:
 
-Provide a dedicated strategic reasoning layer separate from the core character experience.
+Provide a dedicated reasoning layer for decisions involving investment, career planning, business analysis, and long-term thinking.
 
-Rather than acting as a traditional chatbot, this layer is designed to help users evaluate decisions, challenge assumptions, and improve decision quality through structured reasoning.
+---
+
+### Response Mode Engine
+
+Modes include:
+
+* Normal Chat
+* Philosophy Chat
+* Comfort Choice
+* Memory Callback
+* Reward Event
+* Strategic Reasoning
+
+Purpose:
+
+Maintain consistent behavior while adapting responses to different user needs and contexts.
+
+---
+
+### Reward System
+
+Features:
+
+* Point Accumulation
+* Variable Rewards
+* Inventory System
+* Reward Redemption
+
+Purpose:
+
+Introduce lightweight progression systems and recurring interaction rituals.
+
+---
+
+### Autonomous Layer
+
+Features:
+
+* Relationship Checkpoints
+* Reward Suggestions
+* Memory Prompts
+* Cooldown Protection
+
+Purpose:
+
+Allow the system to proactively support engagement rather than remaining entirely reactive.
+
+---
+
+### Event Logging
+
+Features:
+
+* Structured Event Tracking
+* Supabase Event Storage
+* n8n Webhook Integration
+* Analytics-Ready Payloads
+
+Purpose:
+
+Provide infrastructure for future CRM, loyalty systems, analytics, and workflow automation.
+
+---
+
+## Evaluation and Testing
+
+The project includes multiple layers of validation:
+
+### System Validation
+
+* Unit Testing
+* Integration Testing
+* End-to-End Testing
+* Smoke Testing
+* Runtime Persistence Testing
+
+### Memory Validation
+
+* Memory Recall Verification
+* Retrieval Quality Testing
+* Memory Ranking Validation
+* Fact Extraction Testing
+* Profile Extraction Testing
+
+### Behavioral Validation
+
+Current evaluation focuses on:
+
+* Memory Accuracy
+* Recall Consistency
+* Relationship-State Persistence
+* Character Continuity
+* Response Routing Correctness
+
+Future work includes formal LLM evaluation frameworks, automated character-consistency benchmarks, hallucination detection, and retrieval-quality scoring.
 
 ---
 
 ## Technical Stack
 
-Frontend
+### Frontend
 
 * React
+* TypeScript
 * Vite
 
-Backend
+### Backend
 
 * FastAPI
+* Python
 
-AI
+### AI
 
 * Google Gemini API
 
-Database
+### Database
 
 * Supabase
 
-Workflow Automation
+### Workflow Automation
 
 * n8n
 
-Languages
-
-* Python
-* TypeScript
-
-Development Environment
+### Development Environment
 
 * GitHub Codespaces
 
 ---
+
 ## Current Status
 
 i nik is currently deployed as a live MVP and serves as a reusable AI application framework for conversational AI products.
@@ -305,31 +377,32 @@ The current version supports:
 * Strategic Reasoning Modes
 * Personalized Conversations
 * Supabase Persistence
+* Event Logging
 * Deployment-Ready Architecture
 
-The architecture is designed to support future AI products, including companion systems, tutoring systems, strategic reflection agents, and multi-agent experiences.
-
-The architecture is designed to support future AI products, including companion systems, tutoring systems, strategic reflection agents, and multi-agent experiences.
 ---
+
 ## Development Milestones
 
 ### Phase 1 Completed
 
-* Character framework
-* Memory persistence
-* Relationship engine
-* Planner system
-* Response routing
-* Reward shop
-* Redemption system
-* Event logging
-* Autonomous behavior layer
-* Supabase integration
-* Smoke testing
+* Character Framework
+* Persistent Memory
+* Relationship Engine
+* Planner System
+* Response Routing
+* Reward Shop
+* Redemption System
+* Event Logging
+* Autonomous Behaviors
+* Supabase Integration
+* Runtime Persistence
+* Memory Retrieval
+* User Profiling
 
 ---
 
-## Character AI Roadmap
+## Future Roadmap
 
 ### Phase 2
 
@@ -337,119 +410,72 @@ Adaptive Personality System
 
 Goals:
 
-* Personality state machine
-* Behavioral adaptation
-* User-specific interaction styles
-* Stronger character consistency
+* Personality State Machine
+* Behavioral Adaptation
+* User-Specific Interaction Styles
+* Stronger Character Consistency
 
 ---
 
 ### Phase 3
 
-Relationship Progression System
+Advanced Relationship Progression
 
 Goals:
 
-* Multiple familiarity levels
-* Dynamic interaction frequency
-* Loyalty progression
-* Personalized interaction paths
+* Dynamic Familiarity Levels
+* Personalized Interaction Paths
+* Loyalty Progression
+* Long-Term User Modeling
 
 ---
 
 ### Phase 4
 
-Lore-Aware Character Memory
+Multi-Agent Orchestration
 
 Goals:
 
-* Worldbuilding integration
-* Character history memory
-* Story-aware interactions
-* Narrative progression systems
+* Hidden Specialist Agents
+* Shared Memory Layer
+* Shared User Identity
+* Agent Routing
+* Cognitive Mode Switching
+
+Users continue interacting with a unified system rather than multiple visible agents.
 
 ---
 
 ### Phase 5
 
-AI Character Platform
+AI Companion Platform
 
 Goals:
 
-* Multi-user architecture
+* Multi-User Architecture
 * Authentication
-* CRM integration
-* Loyalty integration
-* Commerce integration
-* Character ecosystem
-
----
-
-## Character Runtime Architecture
-
-The current version of i nik uses a persistent runtime character architecture.
-
-Core runtime systems:
-
-* Conversation Persistence
-* User Fact Extraction
-* Relationship State Engine
-* Profile State Tracking
-* Supabase Memory Gateway
-* Runtime State API
-* Lore Bible System
-* Character Identity Protection
-* Reward and Inventory Systems
-
-These systems allow the character to maintain continuity across refreshes and future sessions while preserving character consistency.
+* CRM Integration
+* Loyalty Systems
+* Commerce Integration
+* Character Ecosystem
 
 ---
 
 ## Why This Project Matters
 
-Most AI projects stop at conversation.
+Most AI applications stop at generating responses.
 
-i nik explores whether AI characters can create meaningful long-term engagement through memory, familiarity, progression systems, behavioral design, and relationship building.
+i nik explores whether AI systems can build continuity through memory, relationship awareness, contextual understanding, and strategic reasoning.
 
 The project combines:
 
 * AI Engineering
-* Behavioral Psychology
 * Memory Architecture
-* Relationship Design
-* Gamification Systems
+* Behavioral Design
+* Relationship Systems
+* Strategic Reasoning
 * Workflow Automation
-* Character Design
-* Applied Product Thinking
+* Product Design
+* Applied AI Product Thinking
 
-Rather than building another chatbot, the project investigates how AI characters may become a new category of digital products.
-
-The long-term vision is a persistent character capable of existing across conversations, communities, games, loyalty systems, and real-world experiences.
-
----
-
-## Recent Milestone
-
-A major milestone was completed by moving i nik from a partially mock-driven prototype into a persistent runtime character system.
-
-Completed:
-
-* Persistent conversation history
-* Runtime relationship state persistence
-* Supabase-backed user state
-* Dynamic Profile page
-* Dynamic Journey page
-* Runtime Memory Shelf
-* Fact extraction improvements
-* Lore Bible V2 integration
-* Identity protection rules
-* Hidden lore-triggered dialogue events
-
-Verified through end-to-end testing:
-
-* Refresh persistence
-* State persistence
-* Memory recall
-* Runtime API state loading
-* Character consistency
-* Lore identity locking
+Rather than building another chatbot, i nik investigates how persistent AI systems may evolve into a new category of digital products.
