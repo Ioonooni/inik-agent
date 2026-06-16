@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from behavior import get_stage, get_stage_description
 from memory import build_chat_history
 from memory_gateway import load_memory, save_memory
+from memory_gateway_v2 import save_message_memory_v2
 from relationship import create_relationship_state, update_relationship_state, describe_relationship_state
 from user_profile import create_user_profile, normalize_user_profile, update_user_profile, describe_user_profile
 from modes import detect_response_mode, describe_response_mode
@@ -14,6 +15,7 @@ from facts import extract_facts
 from prompt_builder import build_main_prompt
 from agent_router import detect_agent_handoff
 from rick_prompt import build_rick_prompt
+from rag_prompt import build_safe_rag_context
 
 API_KEY = os.getenv("GEMINI_API_KEY")
 if API_KEY:
@@ -93,7 +95,27 @@ def chat(req: ChatRequest):
 
     chat_history = build_chat_history(recent_messages, limit=10)
 
+    rag_context = build_safe_rag_context(
+        user_id=user_id,
+        user_message=user_message,
+        limit=5,
+    )
+
     agent_mode = (req.agent_mode or "inik").strip().lower()
+
+    try:
+        save_message_memory_v2(
+            user_id=user_id,
+            message=user_message,
+            source="chat",
+            metadata={
+                "agent_mode": agent_mode,
+                "route": "api_chat",
+            },
+        )
+    except Exception as error:
+        print(f"[memory_v2] save failed: {error}")
+
     handoff_suggestion = detect_agent_handoff(user_message)
 
     if agent_mode == "rick_royce":
@@ -101,7 +123,7 @@ def chat(req: ChatRequest):
             user_profile_description=user_profile_description,
             chat_history=chat_history,
             user_facts=user_facts,
-            rag_context="",
+            rag_context=rag_context,
             user_message=user_message,
         )
     else:
@@ -112,7 +134,7 @@ def chat(req: ChatRequest):
             response_mode_description=response_mode_description,
             chat_history=chat_history,
             user_facts=user_facts,
-            rag_context="",
+            rag_context=rag_context,
             user_message=user_message,
             relationship_state=relationship_state,
             days_inactive=0,
