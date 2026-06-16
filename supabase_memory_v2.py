@@ -54,6 +54,18 @@ def upsert_supabase_memory(
     }
 
 
+def _query_terms(query: str) -> List[str]:
+    return [
+        term.strip()
+        for term in (query or "").replace(",", " ").split()
+        if len(term.strip()) >= 2
+    ]
+
+
+def _memory_dedupe_key(memory: Dict[str, Any]) -> str:
+    return str(memory.get("memory_id") or memory.get("id") or memory.get("content") or "")
+
+
 def search_supabase_memories(
     client: Client,
     user_id: str,
@@ -66,7 +78,7 @@ def search_supabase_memories(
     if not q:
         return []
 
-    result = (
+    exact_result = (
         client
         .table(table_name)
         .select("*")
@@ -77,7 +89,34 @@ def search_supabase_memories(
         .execute()
     )
 
-    return list(getattr(result, "data", []) or [])
+    exact_memories = list(getattr(exact_result, "data", []) or [])
+    if exact_memories:
+        return exact_memories
+
+    terms = _query_terms(q)
+    if len(terms) <= 1:
+        return []
+
+    merged: Dict[str, Dict[str, Any]] = {}
+
+    for term in terms:
+        term_result = (
+            client
+            .table(table_name)
+            .select("*")
+            .eq("user_id", user_id)
+            .ilike("content", f"%{term}%")
+            .order("importance", desc=True)
+            .limit(limit)
+            .execute()
+        )
+
+        for memory in list(getattr(term_result, "data", []) or []):
+            key = _memory_dedupe_key(memory)
+            if key:
+                merged[key] = memory
+
+    return list(merged.values())[: max(limit * 3, limit)]
 
 
 def list_supabase_memories(
