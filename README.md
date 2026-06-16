@@ -136,6 +136,26 @@ Create continuity across interactions and reduce stateless chatbot behavior.
 
 ---
 
+### Advanced Memory Architecture
+
+Features:
+
+* Memory Gateway V2
+* Memory Quality Filtering
+* Fact Extraction
+* User Profile Extraction
+* Memory Ranking Engine
+* Retrieval-Augmented Context (RAG)
+* Context-Aware Recall
+
+Purpose:
+
+Improve memory precision, reduce low-value memory storage, prioritize meaningful user information, and retrieve the most relevant context during conversations.
+
+This architecture moves beyond simple chat history storage toward a structured long-term memory system.
+
+---
+
 ### Relationship Engine
 
 Tracks:
@@ -219,6 +239,25 @@ Create an automation-ready backend for future CRM, analytics, loyalty, and workf
 
 ---
 
+### Strategic Reasoning Layer
+
+Features:
+
+* Rick Royce Strategic Mode
+* Tradeoff Analysis
+* Assumption Checking
+* Opportunity Cost Evaluation
+* Decision Support Reasoning
+* Strategic Reflection Framework
+
+Purpose:
+
+Provide a dedicated strategic reasoning layer separate from the core character experience.
+
+Rather than acting as a traditional chatbot, this layer is designed to help users evaluate decisions, challenge assumptions, and improve decision quality through structured reasoning.
+
+---
+
 ## Technical Stack
 
 Frontend
@@ -256,7 +295,19 @@ Development Environment
 
 i nik is currently deployed as a live MVP and serves as a reusable AI application framework for conversational AI products.
 
-The current version supports persistent memory, user profiling, relationship-state tracking, personalized conversation, and production deployment.
+The current version supports:
+
+* Persistent Memory
+* User Profiling
+* Relationship-State Tracking
+* Memory Ranking
+* RAG-Based Context Retrieval
+* Strategic Reasoning Modes
+* Personalized Conversations
+* Supabase Persistence
+* Deployment-Ready Architecture
+
+The architecture is designed to support future AI products, including companion systems, tutoring systems, strategic reflection agents, and multi-agent experiences.
 
 The architecture is designed to support future AI products, including companion systems, tutoring systems, strategic reflection agents, and multi-agent experiences.
 ---
