@@ -49,3 +49,47 @@ def save_message_memory_v2(
             "result": local_result,
             "supabase_error": str(error),
         }
+
+
+def retrieve_memories_v2(
+    user_id: str,
+    query: str,
+    limit: int = 5,
+) -> Dict[str, Any]:
+    """Safe retrieval wrapper for shared memory search."""
+    try:
+        from rag_memory import search_memory_notes
+
+        return search_memory_notes(
+            user_id=user_id,
+            query=query,
+            limit=limit,
+        )
+    except Exception as error:
+        return {
+            "ok": False,
+            "backend": "memory_gateway_v2_retrieve_failed",
+            "error": str(error),
+            "results": [],
+        }
+
+
+def list_recent_memories_v2(
+    user_id: str,
+    limit: int = 10,
+) -> Dict[str, Any]:
+    """Safe retrieval wrapper for recent shared memories."""
+    try:
+        from rag_memory import list_recent_memory_notes
+
+        return list_recent_memory_notes(
+            user_id=user_id,
+            limit=limit,
+        )
+    except Exception as error:
+        return {
+            "ok": False,
+            "backend": "memory_gateway_v2_recent_failed",
+            "error": str(error),
+            "results": [],
+        }
