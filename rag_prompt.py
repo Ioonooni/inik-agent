@@ -1,29 +1,64 @@
 from typing import Any, Dict, List
 
-from rag_memory import search_memory_notes, format_memory_context
+from memory_gateway_v2 import retrieve_memories_v2
+
+
+NO_RAG_MEMORY = "ไม่มี RAG memory ที่เกี่ยวข้อง"
+
+
+def _extract_memory_text(memory: Dict[str, Any]) -> str:
+    for key in ("text", "content", "message", "summary"):
+        value = memory.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    metadata = memory.get("metadata")
+    if isinstance(metadata, dict):
+        for key in ("text", "content", "message", "summary"):
+            value = metadata.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+    return ""
+
+
+def _format_memory_context(memories: List[Dict[str, Any]]) -> str:
+    if not memories:
+        return NO_RAG_MEMORY
+
+    lines = []
+    for memory in memories:
+        text = _extract_memory_text(memory)
+        if text:
+            lines.append(f"- {text}")
+
+    if not lines:
+        return NO_RAG_MEMORY
+
+    return "Relevant memory:\n" + "\n".join(lines)
 
 
 def build_safe_rag_context(user_id: str, user_message: str, limit: int = 5) -> str:
     try:
         if not user_id:
-            return "ไม่มี RAG memory ที่เกี่ยวข้อง"
+            return NO_RAG_MEMORY
 
         query = (user_message or "").strip()
 
         if not query:
-            return "ไม่มี RAG memory ที่เกี่ยวข้อง"
+            return NO_RAG_MEMORY
 
-        result = search_memory_notes(
+        result = retrieve_memories_v2(
             user_id=user_id,
             query=query,
-            limit=limit
+            limit=limit,
         )
 
-        return format_memory_context(result.get("results", []))
+        return _format_memory_context(result.get("results", []))
 
     except Exception as error:
         print("[RAG PROMPT ERROR]", error)
-        return "ไม่มี RAG memory ที่เกี่ยวข้อง"
+        return NO_RAG_MEMORY
 
 
 def get_raw_memories(user_id: str, user_message: str, limit: int = 5) -> List[Dict[str, Any]]:
@@ -36,10 +71,10 @@ def get_raw_memories(user_id: str, user_message: str, limit: int = 5) -> List[Di
         if not query:
             return []
 
-        result = search_memory_notes(
+        result = retrieve_memories_v2(
             user_id=user_id,
             query=query,
-            limit=limit
+            limit=limit,
         )
 
         return result.get("results", [])
