@@ -252,7 +252,14 @@ Development Environment
 * GitHub Codespaces
 
 ---
+## Current Status
 
+i nik is currently deployed as a live MVP and serves as a reusable AI application framework for conversational AI products.
+
+The current version supports persistent memory, user profiling, relationship-state tracking, personalized conversation, and production deployment.
+
+The architecture is designed to support future AI products, including companion systems, tutoring systems, strategic reflection agents, and multi-agent experiences.
+---
 ## Development Milestones
 
 ### Phase 1 Completed
