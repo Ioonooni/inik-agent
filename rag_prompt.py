@@ -29,8 +29,18 @@ def _format_memory_context(memories: List[Dict[str, Any]]) -> str:
     lines = []
     for memory in memories:
         text = _extract_memory_text(memory)
-        if text:
-            lines.append(f"- {text}")
+        if not text:
+            continue
+
+        memory_type = str(memory.get("memory_type") or "memory")
+        rank_score = memory.get("rank_score")
+
+        if isinstance(rank_score, (int, float)):
+            label = f"{memory_type} score={rank_score}"
+        else:
+            label = memory_type
+
+        lines.append(f"- [{label}] {text}")
 
     if not lines:
         return NO_RAG_MEMORY
