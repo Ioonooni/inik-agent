@@ -85,6 +85,10 @@ def detect_topics(user_message):
         "universe": ["จักรวาล", "ดาว", "โลก", "อวกาศ", "หลุมดำ"],
         "identity": ["ตัวตน", "ฉันเป็น", "นิสัย", "บุคลิก"],
         "relationship": ["ความสัมพันธ์", "สนิท", "ไว้ใจ", "คิดถึง"],
+        "business": ["ธุรกิจ", "business", "startup", "บริษัท", "ตลาด", "รายได้"],
+        "investment": ["ลงทุน", "investment", "หุ้น", "valuation", "capital", "risk", "moat"],
+        "technology": ["เทคโนโลยี", "technology", "AI", "semiconductor", "chip", "ASML"],
+        "career": ["งาน", "อาชีพ", "career", "resume", "portfolio", "internship"],
         "reward": ["รางวัล", "แต้ม", "ของสะสม", "inventory"],
         "play": ["555", "ขำ", "กวน", "แซว", "เล่น"],
     }
@@ -143,6 +147,9 @@ def detect_user_archetype(conversation_style, recurring_topics, topic_affinity=N
     if conversation_style == "playful" or "play" in topics:
         return "playful_gremlin"
 
+    if topics.intersection({"business", "investment", "technology", "career"}):
+        return "strategic_builder"
+
     if conversation_style == "long-form" or "memory" in topics:
         return "story_keeper"
 
@@ -176,6 +183,13 @@ def describe_user_archetype(user_archetype):
             "User Archetype: story_keeper — "
             "ผู้ใช้ให้บริบทเยอะหรือเล่าเรื่องยาว "
             "ควรจำรายละเอียดสำคัญและสะท้อนจุดเดียวที่มีน้ำหนัก"
+        )
+
+    if user_archetype == "strategic_builder":
+        return (
+            "User Archetype: strategic_builder — "
+            "ผู้ใช้สนใจธุรกิจ เทคโนโลยี การลงทุน อาชีพ หรือการสร้างระบบ "
+            "ควรตอบด้วยกรอบคิดเชิงกลยุทธ์ tradeoffs ความเสี่ยง และขั้นตอนที่ทำได้จริง"
         )
 
     return (
