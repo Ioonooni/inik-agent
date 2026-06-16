@@ -125,6 +125,32 @@ def extract_facts(user_message, facts):
             _record_history(facts, "likes", liked)
             facts["likes"] = liked
 
+    interest_patterns = [
+        r"ฉันสนใจ\s*([^\n,.!?]+)",
+        r"เราสนใจ\s*([^\n,.!?]+)",
+        r"ฉันกำลังศึกษา\s*([^\n,.!?]+)",
+        r"เรากำลังศึกษา\s*([^\n,.!?]+)",
+        r"กำลังศึกษา\s*([^\n,.!?]+)",
+    ]
+
+    blocked_interest_values = blocked_like_values
+
+    for pattern in interest_patterns:
+        match = re.search(pattern, text)
+
+        if not match:
+            continue
+
+        interest = clean_value(match.group(1))
+
+        if (
+            interest
+            and len(interest) <= 120
+            and interest not in blocked_interest_values
+        ):
+            _record_history(facts, "interests", interest)
+            facts["interests"] = interest
+
 
     pet_match = re.search(r"(?:ฉันมีนกชื่อ|นกชื่อ|ฉันมีสัตว์เลี้ยงชื่อ|สัตว์เลี้ยงชื่อ)\s*([ก-๙A-Za-z0-9_\-]+)", text)
     if pet_match:
@@ -164,8 +190,14 @@ def is_like_question(user_message):
         "เราชอบอะไร",
         "ฉันชอบไร",
         "เราชอบไร",
+        "ฉันสนใจอะไร",
+        "เราสนใจอะไร",
+        "ฉันสนใจอะไรบ้าง",
+        "เราสนใจอะไรบ้าง",
         "จำได้ไหมว่าฉันชอบอะไร",
         "จำได้ไหมว่าเราชอบอะไร",
+        "จำได้ไหมว่าฉันสนใจอะไร",
+        "จำได้ไหมว่าเราสนใจอะไร",
         "ฉันชอบอะไรนะ",
         "เราชอบอะไรนะ",
     ]
@@ -192,11 +224,18 @@ def answer_from_facts(user_message, facts):
         )
 
     if is_like_question(user_message):
+        interests = facts.get("interests")
         liked = facts.get("likes")
+
+        if interests and liked:
+            return f"เท่าที่ฉันจำได้ เธอสนใจ {interests} แล้วก็ชอบ {liked}"
+
+        if interests:
+            return f"เท่าที่ฉันจำได้ เธอสนใจ {interests}"
 
         if liked:
             return f"เท่าที่ฉันจำได้ เธอชอบ {liked}"
 
-        return "ฉันยังไม่รู้เลยว่าเธอชอบอะไร ลองบอกฉันก่อนสิ"
+        return "ฉันยังไม่รู้เลยว่าเธอชอบหรือสนใจอะไร ลองบอกฉันก่อนสิ"
 
     return None
