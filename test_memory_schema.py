@@ -4,6 +4,7 @@ from memory_schema import (
     record_to_dict,
     should_promote_to_long_term,
     merge_duplicate_memory,
+    detect_memory_conflict,
 )
 
 r = build_memory_record(
@@ -93,3 +94,90 @@ def test_merge_preserves_and_adds_metadata():
     assert result["metadata"]["promote_to_long_term"] is True  # preserved
     assert result["metadata"]["reinforced"] is True
     assert result["metadata"]["reinforcement_bonus"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.4A — conflict detection tests
+# ---------------------------------------------------------------------------
+
+def _fact(content, memory_type="user_fact", user_id="u", last_seen_at=None):
+    return {"user_id": user_id, "content": content,
+            "memory_type": memory_type, "last_seen_at": last_seen_at}
+
+
+def test_conflict_name():
+    r = detect_memory_conflict(
+        _fact("ฉันชื่อไออุ่น"),
+        _fact("ฉันชื่ออุ่น"),
+    )
+    assert r["conflict"] is True
+    assert r["category"] == "name"
+
+
+def test_conflict_preference():
+    r = detect_memory_conflict(
+        _fact("ฉันชอบดาวเสาร์"),
+        _fact("ฉันชอบดาวพฤหัส"),
+    )
+    assert r["conflict"] is True
+    assert r["category"] == "preference"
+
+
+def test_conflict_dislike():
+    r = detect_memory_conflict(
+        _fact("ฉันไม่ชอบเสียงดัง"),
+        _fact("ฉันไม่ชอบคนโกหก"),
+    )
+    assert r["conflict"] is True
+    assert r["category"] == "dislike"
+
+
+def test_no_conflict_different_category():
+    r = detect_memory_conflict(
+        _fact("ฉันชอบดาวเสาร์"),
+        _fact("ฉันไม่ชอบเสียงดัง"),
+    )
+    assert r["conflict"] is False
+
+
+def test_no_conflict_identical_content():
+    r = detect_memory_conflict(
+        _fact("ฉันชื่อไออุ่น"),
+        _fact("ฉันชื่อไออุ่น"),
+    )
+    assert r["conflict"] is False
+
+
+def test_no_conflict_non_user_fact():
+    r = detect_memory_conflict(
+        _fact("เหนื่อยมากวันนี้", memory_type="emotional_event"),
+        _fact("เหนื่อยมากวันนี้", memory_type="emotional_event"),
+    )
+    assert r["conflict"] is False
+
+
+def test_winner_newer_incoming():
+    r = detect_memory_conflict(
+        _fact("ฉันชื่อไออุ่น", last_seen_at="2026-01-01T00:00:00+00:00"),
+        _fact("ฉันชื่ออุ่น",   last_seen_at="2026-06-01T00:00:00+00:00"),
+    )
+    assert r["conflict"] is True
+    assert r["winner"] == "incoming"
+
+
+def test_winner_newer_existing():
+    r = detect_memory_conflict(
+        _fact("ฉันชื่อไออุ่น", last_seen_at="2026-06-01T00:00:00+00:00"),
+        _fact("ฉันชื่ออุ่น",   last_seen_at="2026-01-01T00:00:00+00:00"),
+    )
+    assert r["conflict"] is True
+    assert r["winner"] == "existing"
+
+
+def test_winner_unknown_on_missing_timestamps():
+    r = detect_memory_conflict(
+        _fact("ฉันชื่อไออุ่น"),
+        _fact("ฉันชื่ออุ่น"),
+    )
+    assert r["conflict"] is True
+    assert r["winner"] == "unknown"

@@ -73,6 +73,86 @@ def should_promote_to_long_term(record: MemoryRecord) -> bool:
     return record.importance >= 80
 
 
+# ---------------------------------------------------------------------------
+# Conflict detection (Phase 3.4A) — detection only, no mutation
+# ---------------------------------------------------------------------------
+
+_CONFLICT_CATEGORIES: list[tuple[str, tuple[str, ...]]] = [
+    ("name",     ("ฉันชื่อ", "ชื่อฉันคือ", "ผมชื่อ", "หนูชื่อ", "ชื่อผมคือ", "ชื่อหนูคือ")),
+    ("dislike",  ("ฉันไม่ชอบ", "ผมไม่ชอบ", "หนูไม่ชอบ")),
+    ("preference", ("ฉันชอบ", "ผมชอบ", "หนูชอบ", "ฉันสนใจ", "เราสนใจ", "ผมสนใจ", "หนูสนใจ")),
+    ("study",    ("ฉันกำลังเรียน", "ฉันกำลังศึกษา", "เรากำลังเรียน", "เรากำลังศึกษา",
+                  "ผมกำลังเรียน", "ผมกำลังศึกษา", "หนูกำลังเรียน", "หนูกำลังศึกษา")),
+    ("project",  ("ฉันกำลังทำ", "เรากำลังทำ", "ผมกำลังทำ", "หนูกำลังทำ")),
+    ("location", ("ฉันอยู่", "ฉันอาศัย", "ผมอยู่", "หนูอยู่")),
+    ("pet_or_possession", ("ฉันมี", "ผมมี", "หนูมี", "เรามี")),
+]
+
+_CONFLICTABLE_TYPES = {"user_fact", "preference"}
+
+
+def _classify_category(content: str) -> str:
+    text = (content or "").strip().lower()
+    for category, prefixes in _CONFLICT_CATEGORIES:
+        if any(text.startswith(p) for p in prefixes):
+            return category
+    return "unknown"
+
+
+def _winner_by_timestamp(existing: Dict[str, Any], incoming: Dict[str, Any]) -> str:
+    try:
+        ts_e = existing.get("last_seen_at") or existing.get("created_at")
+        ts_i = incoming.get("last_seen_at") or incoming.get("created_at")
+        if not ts_e or not ts_i:
+            return "unknown"
+        dt_e = datetime.fromisoformat(str(ts_e).replace("Z", "+00:00"))
+        dt_i = datetime.fromisoformat(str(ts_i).replace("Z", "+00:00"))
+        if dt_i > dt_e:
+            return "incoming"
+        if dt_e > dt_i:
+            return "existing"
+        return "unknown"
+    except Exception:
+        return "unknown"
+
+
+def detect_memory_conflict(existing: Dict[str, Any], incoming: Dict[str, Any]) -> Dict[str, Any]:
+    """Classify whether two memory dicts may conflict. Never mutates either record."""
+
+    def _no(reason: str) -> Dict[str, Any]:
+        return {"conflict": False, "reason": reason, "category": None, "winner": "unknown"}
+
+    e_type = (existing.get("memory_type") or "").strip().lower()
+    i_type = (incoming.get("memory_type") or "").strip().lower()
+    if e_type not in _CONFLICTABLE_TYPES or i_type not in _CONFLICTABLE_TYPES:
+        return _no("non-conflictable memory type")
+
+    if existing.get("user_id") != incoming.get("user_id"):
+        return _no("different users")
+
+    e_content = (existing.get("content") or "").strip().lower()
+    i_content = (incoming.get("content") or "").strip().lower()
+
+    e_cat = _classify_category(e_content)
+    i_cat = _classify_category(i_content)
+
+    if e_cat == "unknown" or i_cat == "unknown":
+        return _no("unknown category")
+
+    if e_cat != i_cat:
+        return _no("different categories")
+
+    if e_content == i_content:
+        return _no("identical content")
+
+    return {
+        "conflict": True,
+        "reason": f"conflicting {e_cat} facts",
+        "category": e_cat,
+        "winner": _winner_by_timestamp(existing, incoming),
+    }
+
+
 def merge_duplicate_memory(existing: Dict[str, Any], incoming: MemoryRecord) -> Dict[str, Any]:
     merged = dict(existing)
     merged["last_seen_at"] = incoming.last_seen_at
