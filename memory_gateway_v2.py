@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 
 from memory_pipeline import build_memory_from_message
-from memory_store_v2 import upsert_memory_record
+from memory_store_v2 import list_memories, upsert_memory_record
 from supabase_memory import get_supabase_client
 from supabase_memory_v2 import upsert_supabase_memory
 
@@ -66,12 +66,23 @@ def retrieve_memories_v2(
             limit=limit,
         )
     except Exception as error:
-        return {
-            "ok": False,
-            "backend": "memory_gateway_v2_retrieve_failed",
-            "error": str(error),
-            "results": [],
-        }
+        try:
+            from memory_ranking import rank_memories
+            candidates = list_memories(user_id=user_id)
+            ranked = rank_memories(candidates, limit=limit, query=query)
+            return {
+                "ok": True,
+                "backend": "local_json_fallback",
+                "supabase_error": str(error),
+                "results": ranked,
+            }
+        except Exception:
+            return {
+                "ok": False,
+                "backend": "memory_gateway_v2_retrieve_failed",
+                "error": str(error),
+                "results": [],
+            }
 
 
 def list_recent_memories_v2(
@@ -87,9 +98,20 @@ def list_recent_memories_v2(
             limit=limit,
         )
     except Exception as error:
-        return {
-            "ok": False,
-            "backend": "memory_gateway_v2_recent_failed",
-            "error": str(error),
-            "results": [],
-        }
+        try:
+            from memory_ranking import rank_memories
+            candidates = list_memories(user_id=user_id)
+            ranked = rank_memories(candidates, limit=limit, query="")
+            return {
+                "ok": True,
+                "backend": "local_json_fallback_recent",
+                "supabase_error": str(error),
+                "results": ranked,
+            }
+        except Exception:
+            return {
+                "ok": False,
+                "backend": "memory_gateway_v2_recent_failed",
+                "error": str(error),
+                "results": [],
+            }
