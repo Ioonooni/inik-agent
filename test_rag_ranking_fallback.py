@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 for _m in ("supabase_memory", "supabase_memory_v2"):
     sys.modules.setdefault(_m, MagicMock())
 
-from rag_memory import search_memory_notes  # noqa: E402  (must come after stubs)
+from rag_memory import search_memory_notes, list_recent_memory_notes  # noqa: E402  (must come after stubs)
 
 
 # ---------------------------------------------------------------------------
@@ -102,6 +102,105 @@ def test_fallback_superseded_ranks_below_active():
     assert len(result["results"]) == 2
     assert result["results"][0].get("metadata", {}).get("superseded") is not True
     assert result["results"][-1]["metadata"]["superseded"] is True
+
+
+def _make_recent_client(data: list) -> MagicMock:
+    """Return a mock for the list_recent_memory_notes legacy query chain (no ilike)."""
+    mock_result = MagicMock()
+    mock_result.data = data
+    client = MagicMock()
+    (
+        client.table.return_value
+        .select.return_value
+        .eq.return_value
+        .order.return_value
+        .limit.return_value
+        .execute.return_value
+    ) = mock_result
+    return client
+
+
+def _recent_primary(data: list, limit: int = 10) -> dict:
+    """Call list_recent_memory_notes with list_supabase_memories returning data."""
+    with patch("rag_memory.get_supabase_client", return_value=MagicMock()), \
+         patch("rag_memory.list_supabase_memories", return_value=data):
+        return list_recent_memory_notes("u1", limit=limit)
+
+
+def _recent_fallback(data: list, limit: int = 10) -> dict:
+    """Call list_recent_memory_notes with list_supabase_memories forced to fail."""
+    client = _make_recent_client(data)
+    with patch("rag_memory.get_supabase_client", return_value=client), \
+         patch("rag_memory.list_supabase_memories",
+               side_effect=Exception("supabase_v2 unavailable")):
+        return list_recent_memory_notes("u1", limit=limit)
+
+
+def test_recent_primary_results_receive_rank_score():
+    """list_recent primary path must attach rank_score to every result."""
+    data = [
+        _mem("ฉันชอบดาวเสาร์", 85),
+        _mem("ฉันชอบดาวพฤหัส", 80),
+    ]
+    result = _recent_primary(data)
+
+    assert result["ok"] is True
+    assert result["backend"] == "memories_v2"
+    assert all("rank_score" in m for m in result["results"])
+
+
+def test_recent_primary_results_ordered_by_rank_score():
+    """list_recent primary path must sort results by rank_score descending."""
+    data = [
+        _mem("ฉันชอบดาวเสาร์", 40),   # lower importance — returned first by mock
+        _mem("ฉันชอบดาวพฤหัส", 85),   # higher importance
+    ]
+    result = _recent_primary(data)
+
+    assert result["ok"] is True
+    scores = [m["rank_score"] for m in result["results"]]
+    assert scores == sorted(scores, reverse=True)
+    assert result["results"][0]["importance"] == 85
+
+
+def test_recent_legacy_fallback_results_receive_rank_score():
+    """list_recent legacy fallback must attach rank_score to every result."""
+    data = [
+        _mem("ฉันชอบดาวเสาร์", 85),
+        _mem("ฉันชอบดาวพฤหัส", 80),
+    ]
+    result = _recent_fallback(data)
+
+    assert result["ok"] is True
+    assert result["backend"] == "legacy_rag_fallback"
+    assert all("rank_score" in m for m in result["results"])
+
+
+def test_recent_legacy_fallback_results_ordered_by_rank_score():
+    """list_recent legacy fallback must sort results by rank_score descending."""
+    data = [
+        _mem("ฉันชอบดาวเสาร์", 40),   # lower importance — returned first by mock
+        _mem("ฉันชอบดาวพฤหัส", 85),   # higher importance
+    ]
+    result = _recent_fallback(data)
+
+    assert result["ok"] is True
+    scores = [m["rank_score"] for m in result["results"]]
+    assert scores == sorted(scores, reverse=True)
+    assert result["results"][0]["importance"] == 85
+
+
+def test_recent_superseded_ranks_below_active():
+    """Superseded recent memory must rank below active recent memory (both paths)."""
+    data = [
+        _mem("ฉันชอบดาวเสาร์", 85, superseded=True),   # returned first by mock
+        _mem("ฉันชอบดาวพฤหัส", 85),                    # active
+    ]
+    for result in (_recent_primary(data), _recent_fallback(data)):
+        assert result["ok"] is True
+        assert len(result["results"]) == 2
+        assert result["results"][0].get("metadata", {}).get("superseded") is not True
+        assert result["results"][-1]["metadata"]["superseded"] is True
 
 
 def test_fallback_limit_is_respected():
