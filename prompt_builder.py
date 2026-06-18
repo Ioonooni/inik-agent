@@ -1,4 +1,5 @@
 from character import CHARACTER_BIBLE
+from user_profile import get_top_topics
 
 NO_RAG = "ไม่มี RAG memory ที่เกี่ยวข้อง"
 
@@ -83,6 +84,7 @@ def _personality_matrix(
     user_profile_description: str,
     response_mode_description: str,
     relationship_state: dict,
+    user_profile: dict = None,
 ) -> str:
     stage = "Observer"
     if "Stage: Treasure" in stage_description:
@@ -90,22 +92,43 @@ def _personality_matrix(
     elif "Stage: Gremlin" in stage_description:
         stage = "Gremlin"
 
-    recent_mood = _extract_profile_signal(
-        user_profile_description,
-        "Recent Mood",
-        "neutral",
-    )
-    conversation_style = _extract_profile_signal(
-        user_profile_description,
-        "Conversation Style",
-        "unknown",
-    )
-
-    user_archetype = _extract_profile_signal(
-        user_profile_description,
-        "User Archetype",
-        "unknown",
-    )
+    if user_profile is not None:
+        recent_mood = user_profile.get("recent_mood") or "neutral"
+        conversation_style = user_profile.get("conversation_style") or "unknown"
+        user_archetype = user_profile.get("user_archetype") or "unknown"
+        recurring_topics = user_profile.get("recurring_topics") or []
+        topic_affinity = user_profile.get("topic_affinity") or {}
+        top_topics = get_top_topics(topic_affinity, limit=3)
+        memorable_events = user_profile.get("memorable_events") or []
+        recent_memorable_events = memorable_events[-2:]
+        has_recurring = bool(recurring_topics)
+        has_top_topics = bool(top_topics)
+        has_memorable = bool(recent_memorable_events)
+    else:
+        recent_mood = _extract_profile_signal(
+            user_profile_description, "Recent Mood", "neutral"
+        )
+        conversation_style = _extract_profile_signal(
+            user_profile_description, "Conversation Style", "unknown"
+        )
+        user_archetype = _extract_profile_signal(
+            user_profile_description, "User Archetype", "unknown"
+        )
+        recurring_topics = _extract_profile_signal(
+            user_profile_description, "Recurring Topics", "[]"
+        )
+        topic_affinity = _extract_profile_signal(
+            user_profile_description, "Topic Affinity", "{}"
+        )
+        top_topics = _extract_profile_signal(
+            user_profile_description, "Top Topics", "[]"
+        )
+        recent_memorable_events = _extract_profile_signal(
+            user_profile_description, "Recent Memorable Events", "[]"
+        )
+        has_recurring = recurring_topics not in ("[]", "", "None")
+        has_top_topics = top_topics not in ("[]", "", "None")
+        has_memorable = recent_memorable_events not in ("[]", "", "None")
 
     relationship_state = relationship_state or {}
     attachment = relationship_state.get("attachment", 0)
@@ -187,28 +210,7 @@ def _personality_matrix(
             "- Treasure: อบอุ่นและจำบริบทได้มากขึ้น แต่ยังไม่ใช่แฟน",
         ]
 
-    recurring_topics = _extract_profile_signal(
-        user_profile_description,
-        "Recurring Topics",
-        "[]",
-    )
-    topic_affinity = _extract_profile_signal(
-        user_profile_description,
-        "Topic Affinity",
-        "{}",
-    )
-    top_topics = _extract_profile_signal(
-        user_profile_description,
-        "Top Topics",
-        "[]",
-    )
-    recent_memorable_events = _extract_profile_signal(
-        user_profile_description,
-        "Recent Memorable Events",
-        "[]",
-    )
-
-    if recurring_topics not in ("[]", "", "None"):
+    if has_recurring:
         rules += [
             "- Shared Context: ผู้ใช้มี recurring topics แล้ว สามารถเรียกหัวข้อเดิมกลับมาแบบธรรมชาติได้",
             "- ถ้า stage เป็น Gremlin หรือ Treasure ใช้ recurring topics เป็นมุกเบา ๆ หรือบริบทร่วมได้",
@@ -217,7 +219,7 @@ def _personality_matrix(
             "- ห้ามพูดว่าอ่านจากโปรไฟล์หรือระบบ",
         ]
 
-    if top_topics not in ("[]", "", "None"):
+    if has_top_topics:
         rules += [
             f"- Topic Affinity Signal: หัวข้อที่ผู้ใช้สนใจมากที่สุดตอนนี้คือ {top_topics}",
             f"- Topic Affinity Raw Scores: {topic_affinity}",
@@ -226,7 +228,7 @@ def _personality_matrix(
             "- ห้ามยัด top topics เข้าไปถ้าไม่เกี่ยวกับข้อความปัจจุบัน",
         ]
 
-    if recent_memorable_events not in ("[]", "", "None"):
+    if has_memorable:
         rules += [
             "- Shared Memory: มี recent memorable events ใช้เป็นบริบทร่วมได้เมื่อเกี่ยวข้อง",
             "- ใช้ความทรงจำร่วมแบบสั้นและแม่น ห้ามแต่งเหตุการณ์เพิ่ม",
@@ -234,7 +236,7 @@ def _personality_matrix(
         ]
 
     if (
-        recurring_topics not in ("[]", "", "None")
+        has_recurring
         and stage in ("Gremlin", "Treasure")
         and recent_mood not in ("sad", "tired", "anxious")
     ):
@@ -266,6 +268,7 @@ def build_main_prompt(
     relationship_state: dict = None,
     days_inactive: int = 0,
     live_data_warning: str = None,
+    user_profile: dict = None,
 ) -> str:
     facts_text = (
         "\n".join(f"- {k}: {v}" for k, v in user_facts.items() if not k.startswith("_"))
@@ -294,6 +297,7 @@ def build_main_prompt(
         user_profile_description=user_profile_description,
         response_mode_description=response_mode_description,
         relationship_state=relationship_state or {},
+        user_profile=user_profile,
     )
 
     parts = [

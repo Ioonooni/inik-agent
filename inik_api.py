@@ -152,6 +152,7 @@ def chat(req: ChatRequest):
             relationship_state=relationship_state,
             days_inactive=0,
             live_data_warning=None,
+            user_profile=user_profile,
         )
 
     if agent_mode != "rick_royce" and handoff_suggestion:
