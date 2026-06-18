@@ -5,6 +5,7 @@ from memory_schema import (
     should_promote_to_long_term,
     merge_duplicate_memory,
     detect_memory_conflict,
+    mark_memory_superseded,
 )
 
 r = build_memory_record(
@@ -181,3 +182,63 @@ def test_winner_unknown_on_missing_timestamps():
     )
     assert r["conflict"] is True
     assert r["winner"] == "unknown"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.4B — soft supersede tests
+# ---------------------------------------------------------------------------
+
+def test_supersede_incoming_newer_marks_existing():
+    existing = _fact("ฉันชื่อไออุ่น", last_seen_at="2026-01-01T00:00:00+00:00")
+    incoming = {**_fact("ฉันชื่ออุ่น", last_seen_at="2026-06-01T00:00:00+00:00"),
+                "memory_id": "abc123"}
+    result = mark_memory_superseded(existing, incoming)
+    assert result["metadata"]["superseded"] is True
+    assert result["metadata"]["superseded_by"] == "abc123"
+    assert result["metadata"]["superseded_category"] == "name"
+    assert "superseded_at" in result["metadata"]
+
+
+def test_supersede_existing_newer_does_not_mark():
+    existing = _fact("ฉันชื่อไออุ่น", last_seen_at="2026-06-01T00:00:00+00:00")
+    incoming = {**_fact("ฉันชื่ออุ่น", last_seen_at="2026-01-01T00:00:00+00:00"),
+                "memory_id": "abc123"}
+    result = mark_memory_superseded(existing, incoming)
+    assert "superseded" not in result.get("metadata", {})
+
+
+def test_supersede_no_conflict_does_not_mark():
+    existing = _fact("ฉันชอบดาวเสาร์", last_seen_at="2026-01-01T00:00:00+00:00")
+    incoming = {**_fact("ฉันไม่ชอบเสียงดัง", last_seen_at="2026-06-01T00:00:00+00:00"),
+                "memory_id": "xyz"}
+    result = mark_memory_superseded(existing, incoming)
+    assert "superseded" not in result.get("metadata", {})
+
+
+def test_supersede_preserves_existing_metadata():
+    existing = {**_fact("ฉันชื่อไออุ่น", last_seen_at="2026-01-01T00:00:00+00:00"),
+                "metadata": {"promote_to_long_term": True}}
+    incoming = {**_fact("ฉันชื่ออุ่น", last_seen_at="2026-06-01T00:00:00+00:00"),
+                "memory_id": "abc123"}
+    result = mark_memory_superseded(existing, incoming)
+    assert result["metadata"]["promote_to_long_term"] is True
+    assert result["metadata"]["superseded"] is True
+
+
+def test_supersede_superseded_by_is_incoming_memory_id():
+    existing = _fact("ฉันชื่อไออุ่น", last_seen_at="2026-01-01T00:00:00+00:00")
+    incoming = {**_fact("ฉันชื่ออุ่น", last_seen_at="2026-06-01T00:00:00+00:00"),
+                "memory_id": "target_id_999"}
+    result = mark_memory_superseded(existing, incoming)
+    assert result["metadata"]["superseded_by"] == "target_id_999"
+
+
+def test_supersede_does_not_mutate_original():
+    existing = _fact("ฉันชื่อไออุ่น", last_seen_at="2026-01-01T00:00:00+00:00")
+    existing["metadata"] = {"original_key": "original_value"}
+    incoming = {**_fact("ฉันชื่ออุ่น", last_seen_at="2026-06-01T00:00:00+00:00"),
+                "memory_id": "abc123"}
+    mark_memory_superseded(existing, incoming)
+    # Original existing dict must be untouched
+    assert "superseded" not in existing["metadata"]
+    assert existing["metadata"].get("original_key") == "original_value"

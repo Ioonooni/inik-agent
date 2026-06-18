@@ -153,6 +153,27 @@ def detect_memory_conflict(existing: Dict[str, Any], incoming: Dict[str, Any]) -
     }
 
 
+def mark_memory_superseded(existing: Dict[str, Any], incoming: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a copy of existing marked superseded when conflict is true and incoming wins.
+
+    Never mutates either input dict. Returns an unchanged copy if no conflict or
+    if existing is the winner.
+    """
+    result = dict(existing)
+
+    conflict = detect_memory_conflict(existing, incoming)
+    if not conflict["conflict"] or conflict["winner"] != "incoming":
+        return result
+
+    meta = dict(result.get("metadata") or {})
+    meta["superseded"] = True
+    meta["superseded_by"] = incoming.get("memory_id")
+    meta["superseded_at"] = utc_now_iso()
+    meta["superseded_category"] = conflict["category"]
+    result["metadata"] = meta
+    return result
+
+
 def merge_duplicate_memory(existing: Dict[str, Any], incoming: MemoryRecord) -> Dict[str, Any]:
     merged = dict(existing)
     merged["last_seen_at"] = incoming.last_seen_at

@@ -99,7 +99,12 @@ def effective_importance(memory: dict) -> float:
     decay_periods = _age_days(memory) / 30.0
     multiplier = max(0.30, 1.0 - decay_rate * decay_periods)
 
-    return round(base * multiplier, 2)
+    effective = base * multiplier
+
+    if (memory.get("metadata") or {}).get("superseded") is True:
+        effective *= 0.25
+
+    return round(effective, 2)
 
 
 def memory_score(memory: dict, query: str = "") -> float:
