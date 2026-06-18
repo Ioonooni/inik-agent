@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-from memory_gateway_v2 import retrieve_memories_v2
+from memory_gateway_v2 import retrieve_memories_v2, list_recent_memories_v2
 
 
 NO_RAG_MEMORY = "ไม่มี RAG memory ที่เกี่ยวข้อง"
@@ -91,4 +91,15 @@ def get_raw_memories(user_id: str, user_message: str, limit: int = 5) -> List[Di
 
     except Exception as error:
         print("[RAG RAW ERROR]", error)
+        return []
+
+
+def get_recent_memories(user_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+    try:
+        if not user_id:
+            return []
+        result = list_recent_memories_v2(user_id=user_id, limit=limit)
+        return result.get("results", [])
+    except Exception as error:
+        print("[RAG RECENT ERROR]", error)
         return []
