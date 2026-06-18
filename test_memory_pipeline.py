@@ -7,7 +7,7 @@ stored = build_memory_from_message(
 
 assert stored is not None
 assert stored["memory_type"] == "user_fact"
-assert stored["importance"] == 80
+assert stored["importance"] == 85
 assert stored["schema_version"] == "memory_v2"
 assert stored["metadata"]["promote_to_long_term"] is True
 

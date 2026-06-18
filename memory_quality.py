@@ -26,14 +26,30 @@ FACTUAL_WORDS = (
     "เท่ากับ", "คำนวณ", "กลมไหม"
 )
 
-PERSONAL_FACT_PREFIXES = (
+_NAME_PREFIXES = (
     "ฉันชื่อ", "ชื่อฉันคือ", "ผมชื่อ", "หนูชื่อ",
+    "ชื่อผมคือ", "ชื่อหนูคือ",
+)
+
+_PREFERENCE_PREFIXES = (
     "ฉันชอบ", "ผมชอบ", "หนูชอบ",
     "ฉันไม่ชอบ", "ผมไม่ชอบ", "หนูไม่ชอบ",
-    "ฉันสนใจ", "เราสนใจ", "ผมสนใจ", "หนูสนใจ",
+)
+
+_STUDY_PROJECT_PREFIXES = (
     "ฉันกำลังศึกษา", "เรากำลังศึกษา", "ผมกำลังศึกษา", "หนูกำลังศึกษา",
+    "ฉันกำลังเรียน", "เรากำลังเรียน", "ผมกำลังเรียน", "หนูกำลังเรียน",
     "ฉันกำลังทำ", "เรากำลังทำ", "ผมกำลังทำ", "หนูกำลังทำ",
+    "ฉันสนใจ", "เราสนใจ", "ผมสนใจ", "หนูสนใจ",
+)
+
+_OTHER_PERSONAL_PREFIXES = (
     "ฉันเกิด", "วันเกิดฉัน", "ฉันอยู่",
+)
+
+# Public union kept for backward-compat with any external readers
+PERSONAL_FACT_PREFIXES = (
+    _NAME_PREFIXES + _PREFERENCE_PREFIXES + _STUDY_PROJECT_PREFIXES + _OTHER_PERSONAL_PREFIXES
 )
 
 # Possession + named-entity patterns: "ฉันมีนกชื่อโมจิ", "ผมมีแมวชื่อมิ้ว"
@@ -65,11 +81,20 @@ def assess_memory_quality(content: str) -> MemoryQualityDecision:
     if is_question_like(text):
         return MemoryQualityDecision(False, "question", 0, "questions should not be stored as long-term memory")
 
-    if any(text.startswith(prefix) for prefix in PERSONAL_FACT_PREFIXES):
-        return MemoryQualityDecision(True, "user_fact", 80, "explicit personal fact/preference")
+    if any(text.startswith(p) for p in _NAME_PREFIXES):
+        return MemoryQualityDecision(True, "user_fact", 95, "user name or identity fact")
 
     if any(text.startswith(p) for p in _POSSESSION_PREFIXES) and "ชื่อ" in text:
-        return MemoryQualityDecision(True, "user_fact", 75, "personal possession with named entity")
+        return MemoryQualityDecision(True, "user_fact", 90, "named personal possession or pet")
+
+    if any(text.startswith(p) for p in _PREFERENCE_PREFIXES):
+        return MemoryQualityDecision(True, "user_fact", 85, "strong preference or dislike")
+
+    if any(text.startswith(p) for p in _STUDY_PROJECT_PREFIXES):
+        return MemoryQualityDecision(True, "user_fact", 80, "long-term interest, study, or project")
+
+    if any(text.startswith(p) for p in _OTHER_PERSONAL_PREFIXES):
+        return MemoryQualityDecision(True, "user_fact", 80, "explicit personal fact")
 
     if any(word in text for word in EMOTIONAL_WORDS):
         return MemoryQualityDecision(True, "emotional_event", 60, "emotional signal worth remembering lightly")
