@@ -49,3 +49,45 @@ def test_build_base_event():
 if __name__ == "__main__":
     test_build_base_event()
     print("EVENT LOGGER TESTS PASSED")
+
+
+def test_build_base_event_includes_crm_contract():
+    session = FakeSession(
+        user_id="u_crm",
+        username="crm_user",
+        intimacy_score=40,
+        points=25,
+        current_response_mode="normal_chat",
+        relationship_state={
+            "trust": 80,
+            "familiarity": 80,
+            "curiosity": 70,
+            "attachment": 60,
+            "relationship_score": 78,
+            "relationship_stage": "Treasure",
+        },
+        user_profile={
+            "recent_mood": "neutral",
+            "conversation_style": "strategic",
+            "recurring_topics": ["business"],
+            "total_messages": 55,
+            "total_visits": 12,
+            "last_interaction_date": "2026-06-18",
+        },
+        user_facts={"likes": "systems", "name": "ไออุ่น", "project": "i nik"},
+        inventory=["blue_star_fragment", "mint_cookie", "nebula_token"],
+    )
+
+    payload = build_base_event(
+        "crm_contract_test",
+        session,
+        extra={"source": "test"},
+    )
+
+    assert payload["crm"]["customer_id"] == "u_crm"
+    assert payload["crm"]["username"] == "crm_user"
+    assert payload["crm"]["lifecycle_stage"] == "loyal_user"
+    assert payload["crm"]["segment"] == "high_relationship"
+    assert payload["crm"]["engagement"]["total_messages"] == 55
+    assert payload["crm"]["engagement"]["total_visits"] == 12
+    assert payload["crm"]["engagement"]["relationship_stage"] == "Treasure"

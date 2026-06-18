@@ -473,7 +473,7 @@ def main_app():
             st.session_state.intimacy_score,
             st.session_state.points,
             st.session_state.relationship_state,
-            user_id=st.session_state.get("user_id", "demo_user"),
+            user_id=st.session_state.get("user_id"),
         )
 
     user_id = st.session_state.get("user_id")

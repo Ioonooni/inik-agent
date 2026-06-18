@@ -175,6 +175,10 @@ def _personality_matrix(
         rules += [
             "- User Archetype story_keeper: ให้ความสำคัญกับรายละเอียดและ memory callbacks",
         ]
+    elif user_archetype == "strategic_builder":
+        rules += [
+            "- User Archetype strategic_builder: ตอบด้วยกรอบคิดเชิงกลยุทธ์ tradeoffs ความเสี่ยง และขั้นตอนที่ทำได้จริง",
+        ]
 
     if stage == "Observer":
         rules += [

@@ -10,6 +10,46 @@ EVENT_TABLE_NAME = "i_nik_events"
 N8N_TIMEOUT_SECONDS = 8
 
 
+def _crm_lifecycle_stage(total_messages, total_visits, relationship_stage):
+    try:
+        messages = int(total_messages or 0)
+    except (TypeError, ValueError):
+        messages = 0
+
+    try:
+        visits = int(total_visits or 0)
+    except (TypeError, ValueError):
+        visits = 0
+
+    stage = relationship_stage or "Observer"
+
+    if stage == "Treasure" or messages >= 50 or visits >= 10:
+        return "loyal_user"
+
+    if stage == "Gremlin" or messages >= 10 or visits >= 3:
+        return "engaged_user"
+
+    return "new_user"
+
+
+def _crm_segment(points, inventory_count, memory_fact_count, relationship_stage):
+    try:
+        safe_points = int(points or 0)
+    except (TypeError, ValueError):
+        safe_points = 0
+
+    if relationship_stage == "Treasure":
+        return "high_relationship"
+
+    if safe_points >= 20 or inventory_count >= 3:
+        return "reward_engaged"
+
+    if memory_fact_count >= 3:
+        return "memory_rich"
+
+    return "early"
+
+
 def get_event_webhook_url():
     """Return n8n webhook URL if configured."""
     try:
@@ -43,6 +83,35 @@ def build_base_event(event_type, session_state, extra=None):
     intimacy_score = session_state.get("intimacy_score", 0)
     points = session_state.get("points", 0)
     response_mode = session_state.get("current_response_mode", "normal_chat")
+    relationship_stage = relationship_state.get("relationship_stage", "Observer")
+    total_messages = user_profile.get("total_messages", 0)
+    total_visits = user_profile.get("total_visits", 0)
+    memory_fact_count = len(user_facts)
+    inventory_count = len(inventory)
+
+    crm = {
+        "customer_id": user_id,
+        "username": username,
+        "lifecycle_stage": _crm_lifecycle_stage(
+            total_messages,
+            total_visits,
+            relationship_stage,
+        ),
+        "segment": _crm_segment(
+            points,
+            inventory_count,
+            memory_fact_count,
+            relationship_stage,
+        ),
+        "engagement": {
+            "total_messages": total_messages,
+            "total_visits": total_visits,
+            "points": points,
+            "memory_fact_count": memory_fact_count,
+            "inventory_count": inventory_count,
+            "relationship_stage": relationship_stage,
+        },
+    }
 
     return {
         "event_type": event_type,
@@ -77,9 +146,10 @@ def build_base_event(event_type, session_state, extra=None):
                     "last_interaction_date"
                 ),
             },
-            "memory_fact_count": len(user_facts),
-            "inventory_count": len(inventory),
+            "memory_fact_count": memory_fact_count,
+            "inventory_count": inventory_count,
         },
+        "crm": crm,
         "extra": extra,
     }
 

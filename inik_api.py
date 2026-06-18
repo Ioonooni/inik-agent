@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import os
 from google import genai
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -46,7 +46,7 @@ app.add_middleware(
 )
 
 class ChatRequest(BaseModel):
-    user_id: str = "web_demo_user"
+    user_id: str = ""
     username: str = "traveler"
     message: str
     agent_mode: str = "inik"
@@ -61,7 +61,9 @@ def health():
 
 @app.post("/api/chat")
 def chat(req: ChatRequest):
-    user_id = req.user_id or "web_demo_user"
+    user_id = (req.user_id or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
     user_message = req.message.strip()
 
     memory = load_memory(user_id=user_id)
@@ -197,7 +199,10 @@ def chat(req: ChatRequest):
 
 
 @app.get("/api/state")
-def get_state(user_id: str = "web_demo_user"):
+def get_state(user_id: str = ""):
+    user_id = (user_id or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
     memory = load_memory(user_id=user_id)
 
     user_facts = memory.get("user_facts", {})
