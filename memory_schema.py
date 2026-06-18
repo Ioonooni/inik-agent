@@ -76,7 +76,14 @@ def should_promote_to_long_term(record: MemoryRecord) -> bool:
 def merge_duplicate_memory(existing: Dict[str, Any], incoming: MemoryRecord) -> Dict[str, Any]:
     merged = dict(existing)
     merged["last_seen_at"] = incoming.last_seen_at
-    merged["hit_count"] = int(merged.get("hit_count", 1)) + 1
-    merged["importance"] = max(int(merged.get("importance", 0)), incoming.importance)
+    new_hit_count = int(merged.get("hit_count", 1)) + 1
+    merged["hit_count"] = new_hit_count
+    base_importance = max(int(merged.get("importance", 0)), incoming.importance)
+    reinforcement_bonus = min(20, max(0, new_hit_count - 1) * 2)
+    merged["importance"] = min(100, base_importance + reinforcement_bonus)
     merged["schema_version"] = SCHEMA_VERSION
+    meta = dict(merged.get("metadata") or {})
+    meta["reinforced"] = True
+    meta["reinforcement_bonus"] = reinforcement_bonus
+    merged["metadata"] = meta
     return merged
