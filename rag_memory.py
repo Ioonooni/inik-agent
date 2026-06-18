@@ -114,7 +114,7 @@ def search_memory_notes(
                 "ok": True,
                 "backend": "legacy_rag_fallback",
                 "primary_error": str(primary_error),
-                "results": result.data or [],
+                "results": rank_memories(result.data or [], limit=limit, query=cleaned_query),
             }
 
         except Exception as fallback_error:
