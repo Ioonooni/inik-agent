@@ -79,3 +79,34 @@ def test_rank_memories_returns_rank_score():
     mems = [_mem("a", 50, "user_fact", age_days=5), _mem("b", 30, "user_fact", age_days=5)]
     result = rank_memories(mems)
     assert all("rank_score" in m for m in result)
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.4B — supersede penalty tests
+# ---------------------------------------------------------------------------
+
+def _superseded_mem(content, importance, memory_type="user_fact", age_days=0, hit_count=1):
+    m = _mem(content, importance, memory_type, age_days, hit_count)
+    m["metadata"] = {"superseded": True}
+    return m
+
+
+def test_superseded_memory_has_lower_effective_importance():
+    normal = _mem("ฉันชื่อไออุ่น", 90, "user_fact", age_days=0)
+    superseded = _superseded_mem("ฉันชื่อไออุ่น", 90, "user_fact", age_days=0)
+    assert effective_importance(superseded) < effective_importance(normal)
+
+
+def test_rank_places_non_superseded_above_superseded():
+    superseded = _superseded_mem("ฉันชื่อไออุ่น", 90, "user_fact", age_days=0)
+    active = _mem("ฉันชื่ออุ่น", 90, "user_fact", age_days=0)
+    result = rank_memories([superseded, active])
+    assert result[0]["content"] == "ฉันชื่ออุ่น"
+
+
+def test_rank_does_not_mutate_stored_superseded_input():
+    mem = _superseded_mem("ฉันชื่อไออุ่น", 90, "user_fact", age_days=0)
+    original_importance = mem["importance"]
+    rank_memories([mem])
+    assert mem["importance"] == original_importance
+    assert mem["metadata"]["superseded"] is True
