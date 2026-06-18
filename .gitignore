@@ -1,35 +1,27 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
 .streamlit/secrets.toml
+
+# Python caches and test artifacts
 __pycache__/
-__pycache__/
-
-# Temporary test artifacts
-tmp_memory_store_v2_test.json
-
-# Local memory fallback store
-memory_store_v2.json
-# Reports
-*_report.txt
-status.txt
-
-# Python
-__pycache__/
-*.pyc
-# Reports
-*_report.txt
-status.txt
-
-# Python
-__pycache__/
-*.pyc
-
-# Local scan outputs
-v2_*.txt
+*.py[cod]
+.pytest_cache/
 
 # Local runtime data
 memory_store.json
 memory_store_v2.json
 tmp_memory_store_v2_test.json
 
-# One-off patch scripts
+# Generated reports and local inspection outputs
+*_report.txt
+status.txt
+project-tree.txt
+v2_*.txt
+readme_reality_check.txt
+readme_reality_check.sh
+
+# One-off patch scripts and backup snapshots
 fix_*_runtime.py
-*.bak_*
+*.bak*

@@ -227,15 +227,20 @@ Allow the character to occasionally initiate interaction rather than remaining f
 
 ### Event Logging
 
-Features:
+Implemented:
 
-* Supabase event storage
-* n8n webhook integration
 * Structured event payloads
+* Supabase event storage as the primary event log
+* Optional n8n webhook forwarding through `N8N_EVENT_WEBHOOK_URL`
+* Graceful fallback when n8n is not configured or webhook delivery fails
 
 Purpose:
 
 Create an automation-ready backend for future CRM, analytics, loyalty, and workflow systems.
+
+Note:
+
+The application does not depend on n8n to keep running. Supabase event logging remains the primary path, while n8n acts as a workflow automation extension.
 
 ---
 
