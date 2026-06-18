@@ -19,3 +19,30 @@ for text, should_store, memory_type in cases:
     assert result.memory_type == memory_type
 
 print("MEMORY QUALITY TESTS PASSED")
+
+
+def test_name_importance():
+    assert assess_memory_quality("ฉันชื่อไออุ่น").importance == 95
+    assert assess_memory_quality("ชื่อฉันคืออุ่น").importance == 95
+
+
+def test_preference_importance():
+    assert assess_memory_quality("ฉันชอบดาวเสาร์").importance == 85
+    assert assess_memory_quality("ฉันไม่ชอบเสียงดัง").importance == 85
+
+
+def test_named_possession_importance():
+    assert assess_memory_quality("ฉันมีแมวชื่ออีอ้วน").importance == 90
+    assert assess_memory_quality("ผมมีนกชื่อโมจิ").importance == 90
+
+
+def test_study_project_importance():
+    assert assess_memory_quality("ฉันกำลังเรียนภาษาจีน").importance == 80
+    assert assess_memory_quality("ฉันกำลังทำโปรเจกต์ไออีก").importance == 80
+
+
+def test_rejection_cases():
+    assert not assess_memory_quality("ฉันชอบอะไรเกี่ยวกับหลุมดำ").should_store
+    assert not assess_memory_quality("หลุมดำคืออะไร").should_store
+    assert not assess_memory_quality("ตอนนี้กี่โมง").should_store
+    assert not assess_memory_quality("คุยเล่นหน่อย").should_store
