@@ -340,12 +340,27 @@ The architecture is designed to support future AI products, including companion 
 
 Adaptive Personality System
 
-Goals:
+Status: Implemented MVP
 
-* Personality state machine
-* Behavioral adaptation
-* User-specific interaction styles
-* Stronger character consistency
+Implemented:
+
+* Per-user adaptive personality state
+* Bounded trait schema
+* Personality update engine
+* Drift guard against global identity mutation
+* Prompt integration
+* User-profile persistence through existing memory/profile storage
+* Targeted regression tests
+
+Design principle:
+
+i nik adapts to each user without changing its global identity — like someone socially flexible who still remains themselves.
+
+Remaining future work:
+
+* Personality history timeline
+* Better observability for personality changes
+* UI/debug view for adaptive personality state
 
 ---
 
