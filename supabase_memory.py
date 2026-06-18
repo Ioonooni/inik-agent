@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
-
 import os
-import streamlit as st
+import time
 from supabase import create_client
 
 from persistent_memory import get_default_memory
@@ -17,6 +16,7 @@ def get_secret_value(name):
         return value
 
     try:
+        import streamlit as st
         return st.secrets.get(name)
     except Exception:
         return None
@@ -116,27 +116,30 @@ def save_memory_to_supabase(
     relationship_state,
     user_id=DEMO_USER_ID
 ):
-    try:
-        client = get_supabase_client()
+    payload = {
+        "user_id": user_id,
+        "user_facts": user_facts,
+        "user_profile": user_profile,
+        "inventory": inventory,
+        "relationship_state": relationship_state,
+        "intimacy_score": intimacy_score,
+        "points": points,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
 
-        payload = {
-            "user_id": user_id,
-            "user_facts": user_facts,
-            "user_profile": user_profile,
-            "inventory": inventory,
-            "relationship_state": relationship_state,
-            "intimacy_score": intimacy_score,
-            "points": points,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }
+    last_error = None
+    for attempt in range(2):
+        try:
+            client = get_supabase_client()
+            client.table(TABLE_NAME).upsert(
+                payload,
+                on_conflict="user_id"
+            ).execute()
+            return True
+        except Exception as error:
+            last_error = error
+            if attempt == 0:
+                time.sleep(1)
 
-        client.table(TABLE_NAME).upsert(
-            payload,
-            on_conflict="user_id"
-        ).execute()
-
-        return True
-
-    except Exception as error:
-        print(f"[Supabase save failed] {error}")
-        return False
+    print(f"[Supabase save failed after 2 attempts] {last_error}")
+    return False

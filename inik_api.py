@@ -1,8 +1,9 @@
 import os
+import re
 from dotenv import load_dotenv
 load_dotenv()
 from google import genai
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -45,6 +46,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_USER_ID_RE = re.compile(r'^[A-Za-z0-9_\-]{1,64}$')
+_DEFAULT_USER_ID = "web_demo_user"
+
+
+def _validate_user_id(user_id: str) -> str:
+    if not user_id or user_id == _DEFAULT_USER_ID:
+        return _DEFAULT_USER_ID
+    if not _USER_ID_RE.match(user_id):
+        raise HTTPException(status_code=400, detail="Invalid user_id: use letters, numbers, _ or - (max 64 chars)")
+    return user_id
+
+
 class ChatRequest(BaseModel):
     user_id: str = "web_demo_user"
     username: str = "traveler"
@@ -61,7 +74,7 @@ def health():
 
 @app.post("/api/chat")
 def chat(req: ChatRequest):
-    user_id = req.user_id or "web_demo_user"
+    user_id = _validate_user_id(req.user_id or _DEFAULT_USER_ID)
     user_message = req.message.strip()
 
     memory = load_memory(user_id=user_id)
@@ -197,6 +210,7 @@ def chat(req: ChatRequest):
 
 @app.get("/api/state")
 def get_state(user_id: str = "web_demo_user"):
+    user_id = _validate_user_id(user_id)
     memory = load_memory(user_id=user_id)
 
     user_facts = memory.get("user_facts", {})
