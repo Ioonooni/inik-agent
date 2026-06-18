@@ -94,6 +94,9 @@ def search_memories(
         content = (memory.get("content") or "").lower()
         memory_type = (memory.get("memory_type") or "").lower()
 
+        if q not in content and q not in memory_type:
+            continue
+
         score = 0
         if q in content:
             score += 10
@@ -103,8 +106,7 @@ def search_memories(
         score += int(memory.get("importance", 0)) / 100
         score += int(memory.get("hit_count", 1)) * 0.1
 
-        if score > 0:
-            scored.append((score, memory))
+        scored.append((score, memory))
 
     scored.sort(key=lambda item: item[0], reverse=True)
     return [m for _, m in scored[:limit]]
