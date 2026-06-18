@@ -33,3 +33,4 @@ tmp_memory_store_v2_test.json
 # One-off patch scripts
 fix_*_runtime.py
 *.bak_*
+*.bak.*
