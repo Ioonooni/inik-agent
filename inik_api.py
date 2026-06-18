@@ -139,6 +139,7 @@ def chat(req: ChatRequest):
             relationship_state=relationship_state,
             days_inactive=0,
             live_data_warning=None,
+            adaptive_personality_state=user_profile.get("adaptive_personality"),
         )
 
     if agent_mode != "rick_royce" and handoff_suggestion:

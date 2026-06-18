@@ -261,6 +261,7 @@ def _adaptive_personality_directive(
     relationship_state: dict,
     user_profile_description: str,
     user_message: str,
+    base_state: dict = None,
 ) -> str:
     """
     Convert bounded adaptive personality state into prompt instructions.
@@ -292,6 +293,7 @@ def _adaptive_personality_directive(
         total_visits = 0
 
     state = derive_personality_state(
+        base_state=base_state,
         relationship_state=relationship_state,
         user_profile={
             "recent_mood": recent_mood,
@@ -355,6 +357,7 @@ def build_main_prompt(
     relationship_state: dict = None,
     days_inactive: int = 0,
     live_data_warning: str = None,
+    adaptive_personality_state: dict = None,
 ) -> str:
     facts_text = (
         "\n".join(f"- {k}: {v}" for k, v in user_facts.items() if not k.startswith("_"))
@@ -389,6 +392,7 @@ def build_main_prompt(
         relationship_state=relationship_state or {},
         user_profile_description=user_profile_description,
         user_message=user_message,
+        base_state=adaptive_personality_state,
     )
 
     parts = [

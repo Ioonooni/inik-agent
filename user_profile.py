@@ -1,5 +1,9 @@
 from datetime import datetime
 
+from personality_engine import derive_personality_state
+from personality_guard import repair_personality_state, validate_personality_state
+from personality_state import create_personality_state, normalize_personality_state
+
 
 def create_user_profile():
     return {
@@ -12,6 +16,7 @@ def create_user_profile():
         "total_messages": 0,
         "total_visits": 0,
         "last_interaction_date": None,
+        "adaptive_personality": create_personality_state(),
     }
 
 
@@ -231,6 +236,15 @@ def update_user_profile(user_message, user_profile):
         user_profile.get("topic_affinity", {}),
     )
 
+    # Relationship state is applied by callers after profile update in some paths.
+    # This keeps profile update backward-compatible; API/runtime can call
+    # update_adaptive_personality again with relationship_state for stronger signal.
+    user_profile = update_adaptive_personality(
+        user_message,
+        user_profile,
+        relationship_state=None,
+    )
+
     if len(user_message.strip()) >= 100:
         memorable_event = user_message.strip()
 
@@ -241,6 +255,45 @@ def update_user_profile(user_message, user_profile):
 
     return user_profile
 
+
+
+def update_adaptive_personality(user_message, user_profile, relationship_state=None):
+    """
+    Persist bounded per-user adaptive personality state inside user_profile.
+
+    This is B-lite persistence:
+    - no database migration
+    - no global identity mutation
+    - no separate personality history table
+    """
+    user_profile = normalize_user_profile(user_profile)
+
+    previous_state = user_profile.get("adaptive_personality")
+    previous_state = repair_personality_state(previous_state)
+
+    next_state = derive_personality_state(
+        base_state=previous_state,
+        relationship_state=relationship_state or {},
+        user_profile={
+            "recent_mood": user_profile.get("recent_mood", "neutral"),
+            "conversation_style": user_profile.get("conversation_style", "unknown"),
+            "total_visits": user_profile.get("total_visits", 0),
+        },
+        user_message=user_message,
+    )
+
+    ok, errors = validate_personality_state(next_state)
+
+    if not ok:
+        next_state = repair_personality_state(next_state)
+        ok, errors = validate_personality_state(next_state)
+
+    next_state.setdefault("metadata", {})
+    next_state["metadata"]["persisted_in"] = "user_profile.adaptive_personality"
+    next_state["metadata"]["last_updated_at"] = datetime.now().isoformat(timespec="seconds")
+
+    user_profile["adaptive_personality"] = next_state
+    return user_profile
 
 def describe_user_profile(user_profile):
     user_profile = normalize_user_profile(user_profile)
@@ -255,6 +308,10 @@ def describe_user_profile(user_profile):
     total_messages = user_profile.get("total_messages", 0)
     total_visits = user_profile.get("total_visits", 0)
     last_interaction_date = user_profile.get("last_interaction_date")
+    adaptive_personality = normalize_personality_state(
+        user_profile.get("adaptive_personality")
+    )
+    adaptive_traits = adaptive_personality.get("traits", {})
 
     recent_memorable_events = memorable_events[-2:] if memorable_events else []
     archetype_description = describe_user_archetype(user_archetype)
@@ -272,6 +329,7 @@ User Profile:
 - Total User Messages: {total_messages}
 - Total Visits: {total_visits}
 - Last Interaction Date: {last_interaction_date}
+- Adaptive Personality: {adaptive_traits}
 
 {archetype_description}
 """

@@ -51,3 +51,48 @@ def test_adaptive_prompt_responds_to_emotional_context():
     assert "- warmth: 0.60" in prompt
     assert "- playfulness: 0.35" in prompt
     assert "comfort_choice ต้องชนะ personality matrix" in prompt
+
+
+
+def test_main_prompt_uses_persisted_adaptive_personality_as_base_state():
+    saved_state = {
+        "schema": "adaptive_personality_v1",
+        "traits": {
+            "warmth": 0.80,
+            "playfulness": 0.10,
+            "curiosity": 0.20,
+            "directness": 0.20,
+            "philosophy": 0.20,
+            "initiative": 0.10,
+            "memory_callback": 0.60,
+            "formality": 0.70,
+        },
+        "metadata": {
+            "scope": "per_user",
+            "global_identity_mutation": False,
+        },
+    }
+
+    prompt = build_main_prompt(
+        stage_description="Stage: Observer",
+        relationship_description="- Trust: 0\n- Familiarity: 0\n- Curiosity: 0",
+        user_profile_description="- Recent Mood: neutral\n- Conversation Style: unknown\n- Total Visits: 0",
+        response_mode_description="Response Mode: normal_chat",
+        chat_history="",
+        user_facts={},
+        rag_context="ไม่มี RAG memory ที่เกี่ยวข้อง",
+        user_message="สวัสดี",
+        relationship_state={
+            "trust": 0,
+            "familiarity": 0,
+            "curiosity": 0,
+            "attachment": 0,
+            "relationship_stage": "Observer",
+        },
+        adaptive_personality_state=saved_state,
+    )
+
+    assert "- warmth: 0.80" in prompt
+    assert "- playfulness: 0.10" in prompt
+    assert "- memory_callback: 0.60" in prompt
+    assert "- formality: 0.70" in prompt
