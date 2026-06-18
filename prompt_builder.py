@@ -1,4 +1,6 @@
 from character import CHARACTER_BIBLE
+from personality_engine import derive_personality_state
+from personality_guard import repair_personality_state, validate_personality_state
 
 NO_RAG = "ไม่มี RAG memory ที่เกี่ยวข้อง"
 
@@ -254,6 +256,93 @@ def _personality_matrix(
     return "\n".join(rules)
 
 
+
+def _adaptive_personality_directive(
+    relationship_state: dict,
+    user_profile_description: str,
+    user_message: str,
+) -> str:
+    """
+    Convert bounded adaptive personality state into prompt instructions.
+
+    This is per-user adaptation only. It must not mutate i nik's global identity.
+    """
+    relationship_state = relationship_state or {}
+
+    # Keep this parser intentionally conservative.
+    recent_mood = _extract_profile_signal(
+        user_profile_description,
+        "Recent Mood",
+        "neutral",
+    )
+    conversation_style = _extract_profile_signal(
+        user_profile_description,
+        "Conversation Style",
+        "unknown",
+    )
+    total_visits_raw = _extract_profile_signal(
+        user_profile_description,
+        "Total Visits",
+        "0",
+    )
+
+    try:
+        total_visits = int(total_visits_raw)
+    except (TypeError, ValueError):
+        total_visits = 0
+
+    state = derive_personality_state(
+        relationship_state=relationship_state,
+        user_profile={
+            "recent_mood": recent_mood,
+            "conversation_style": conversation_style,
+            "total_visits": total_visits,
+        },
+        user_message=user_message,
+    )
+
+    ok, errors = validate_personality_state(state)
+
+    if not ok:
+        state = repair_personality_state(state)
+        ok, errors = validate_personality_state(state)
+
+    traits = state.get("effective_traits") or state.get("traits") or {}
+
+    lines = [
+        "Adaptive Personality V1:",
+        "- Scope: per-user adaptation only",
+        "- Core identity remains unchanged",
+        "- These values adjust intensity, not identity:",
+    ]
+
+    for trait_name in sorted(traits):
+        lines.append(f"- {trait_name}: {traits[trait_name]:.2f}")
+
+    lines += [
+        "",
+        "Adaptive Behavior Rules:",
+        "- warmth สูงขึ้น = น้ำเสียงนุ่มขึ้น แต่ไม่กลายเป็น therapist",
+        "- playfulness สูงขึ้น = กวน/เล่นมากขึ้น แต่ต้องไม่แรงหรือหลุดคาแรกเตอร์",
+        "- curiosity สูงขึ้น = ถามต่อได้มากขึ้น แต่ห้ามซักจนผู้ใช้เหนื่อย",
+        "- directness สูงขึ้น = ตอบตรงขึ้น แต่ยังสุภาพและไม่แข็ง",
+        "- philosophy สูงขึ้น = ใช้มุมมองชีวิต/มนุษย์/จักรวาลได้ แต่ห้ามกลายเป็นบทความ",
+        "- initiative สูงขึ้น = ชวนต่อหรือเสนอ ritual ได้เล็กน้อย แต่ห้าม clingy",
+        "- memory_callback สูงขึ้น = ใช้ความจำเก่าได้เมื่อเกี่ยวข้องเท่านั้น",
+        "- formality สูงขึ้น = สุภาพขึ้น เว้นระยะขึ้น",
+        "- ถ้า temporary context ขัดกับ core identity ให้ core identity ชนะ",
+        "- ห้ามเปลี่ยน i nik เป็นแฟน therapist customer service หรือ generic assistant",
+    ]
+
+    if errors:
+        lines += [
+            "",
+            "Guard Note:",
+            "- Adaptive state was repaired by guard before use.",
+        ]
+
+    return "\n".join(lines)
+
 def build_main_prompt(
     stage_description: str,
     relationship_description: str,
@@ -296,6 +385,12 @@ def build_main_prompt(
         relationship_state=relationship_state or {},
     )
 
+    adaptive_personality_directive = _adaptive_personality_directive(
+        relationship_state=relationship_state or {},
+        user_profile_description=user_profile_description,
+        user_message=user_message,
+    )
+
     parts = [
         CHARACTER_BIBLE,
         "",
@@ -313,6 +408,9 @@ def build_main_prompt(
     parts += [
         "กฎการผสมบุคลิกตามบริบท:",
         personality_directive,
+        "",
+        "กฎ Adaptive Personality V1:",
+        adaptive_personality_directive,
         "",
     ]
 
