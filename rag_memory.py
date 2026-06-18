@@ -145,7 +145,7 @@ def list_recent_memory_notes(
         return {
             "ok": True,
             "backend": "memories_v2",
-            "results": memories,
+            "results": rank_memories(memories, limit=limit, query=""),
         }
 
     except Exception as primary_error:
@@ -165,7 +165,7 @@ def list_recent_memory_notes(
                 "ok": True,
                 "backend": "legacy_rag_fallback",
                 "primary_error": str(primary_error),
-                "results": result.data or [],
+                "results": rank_memories(result.data or [], limit=limit, query=""),
             }
 
         except Exception as fallback_error:
