@@ -138,6 +138,41 @@ def list_supabase_memories(
     return list(getattr(result, "data", []) or [])
 
 
+def fetch_conflictable_memories(
+    client: Client,
+    user_id: str,
+    table_name: str = TABLE_NAME,
+    limit: int = 50,
+) -> List[Dict[str, Any]]:
+    result = (
+        client
+        .table(table_name)
+        .select("*")
+        .eq("user_id", user_id)
+        .in_("memory_type", ["user_fact", "preference"])
+        .order("last_seen_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return list(getattr(result, "data", []) or [])
+
+
+def supersede_supabase_memory(
+    client: Client,
+    memory_id: str,
+    metadata: Dict[str, Any],
+    table_name: str = TABLE_NAME,
+) -> Dict[str, Any]:
+    result = (
+        client
+        .table(table_name)
+        .update({"metadata": metadata})
+        .eq("memory_id", memory_id)
+        .execute()
+    )
+    return {"ok": True, "memory_id": memory_id, "result": result}
+
+
 def mark_supabase_memories_used(
     client: Client,
     memories: List[Dict[str, Any]],
