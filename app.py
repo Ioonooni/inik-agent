@@ -6,11 +6,9 @@ from behavior import get_stage, get_stage_description
 from character import CHARACTER_BIBLE
 from memory import build_chat_history
 from rag_prompt import build_safe_rag_context, get_raw_memories
-from rag_memory import save_memory_note
 from memory_gateway_v2 import save_message_memory_v2
 from truth_engine import classify as classify_query, QueryType
 from memory_verifier import verify as verify_memories
-from memory_quality import assess_memory_quality
 from response_router import route as route_response, RouteType
 from facts import extract_facts, answer_from_facts
 from rewards import check_reward, format_reward, get_reward_shop
@@ -822,21 +820,17 @@ def main_app():
 
         if should_save_rag_user_message(user_message, classification):
             try:
-                quality = assess_memory_quality(user_message)
-
-                if quality.should_store:
-
-                    save_memory_note(
+                save_message_memory_v2(
                     user_id=user_id,
-                    content=user_message,
-                    memory_type=quality.memory_type,
+                    message=user_message,
+                    source="streamlit",
                     metadata={
-                        "importance": quality.importance,
-                        "quality_reason": quality.reason,
+                        "agent_mode": "inik",
+                        "route": "streamlit_chat",
                     },
                 )
             except Exception as error:
-                print("[RAG SAVE ERROR]", error)
+                print("[MEMORY V2 SAVE ERROR]", error)
 
         st.session_state.intimacy_score = min(
             100,
