@@ -5,7 +5,7 @@ import google.generativeai as genai
 from behavior import get_stage, get_stage_description
 from character import CHARACTER_BIBLE
 from memory import build_chat_history
-from rag_prompt import build_safe_rag_context, get_raw_memories
+from rag_prompt import build_safe_rag_context, get_raw_memories, get_recent_memories
 from memory_gateway_v2 import save_message_memory_v2
 from truth_engine import classify as classify_query, QueryType
 from memory_verifier import verify as verify_memories
@@ -921,12 +921,11 @@ def main_app():
         
         recall_memories = list(raw_memories or [])
         try:
-            broader_memories = get_raw_memories(
-                user_id=user_id,
-                user_message="",
-                limit=50,
-            )
-            recall_memories.extend(broader_memories or [])
+            seen_ids = {m.get("memory_id") for m in recall_memories if m.get("memory_id")}
+            recent = get_recent_memories(user_id=user_id, limit=5)
+            for m in recent:
+                if m.get("memory_id") not in seen_ids:
+                    recall_memories.append(m)
         except Exception:
             pass
 
