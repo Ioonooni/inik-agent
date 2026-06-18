@@ -58,6 +58,17 @@ def _validate_user_id(user_id: str) -> str:
     return user_id
 
 
+STAGE_ORDER = {"Observer": 0, "Gremlin": 1, "Treasure": 2}
+
+
+def _resolve_canonical_stage(intimacy_score: int, relationship_state: dict) -> str:
+    intimacy_stage = get_stage(intimacy_score)
+    rel_stage = (relationship_state or {}).get("relationship_stage", "Observer")
+    intimacy_rank = STAGE_ORDER.get(intimacy_stage, 0)
+    rel_rank = STAGE_ORDER.get(rel_stage, 0)
+    return rel_stage if rel_rank > intimacy_rank else intimacy_stage
+
+
 class ChatRequest(BaseModel):
     user_id: str = "web_demo_user"
     username: str = "traveler"
@@ -98,7 +109,7 @@ def chat(req: ChatRequest):
     user_profile = update_user_profile(user_message, user_profile)
     relationship_state = update_relationship_state(user_message, relationship_state)
 
-    stage = get_stage(intimacy_score)
+    stage = _resolve_canonical_stage(intimacy_score, relationship_state)
     stage_description = get_stage_description(stage)
     relationship_description = describe_relationship_state(relationship_state)
     user_profile_description = describe_user_profile(user_profile)
@@ -221,7 +232,7 @@ def get_state(user_id: str = "web_demo_user"):
     relationship_state = memory.get("relationship_state", create_relationship_state())
     recent_messages = user_profile.get("recent_messages", [])
 
-    stage = get_stage(intimacy_score)
+    stage = _resolve_canonical_stage(intimacy_score, relationship_state)
 
     return {
         "user_id": user_id,
