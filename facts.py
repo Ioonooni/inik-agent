@@ -96,6 +96,26 @@ def extract_facts(user_message, facts):
         r"ของโปรดของฉันคือ\s*([^\n,.!?]+)",
     ]
 
+    favorite_color_patterns = [
+        r"สีที่ฉันชอบคือ\s*([^\n,.!?]+)",
+        r"สีที่เราชอบคือ\s*([^\n,.!?]+)",
+        r"ฉันชอบสี\s*([^\n,.!?]+)",
+        r"เราชอบสี\s*([^\n,.!?]+)",
+    ]
+
+    for pattern in favorite_color_patterns:
+        match = re.search(pattern, text)
+        if not match:
+            continue
+
+        color = clean_value(match.group(1))
+
+        if color and len(color) <= 40:
+            _record_history(facts, "favorite_color", color)
+            facts["favorite_color"] = color
+            _record_history(facts, "likes", color if color.startswith("สี") else f"สี{color}")
+            facts["likes"] = color if color.startswith("สี") else f"สี{color}"
+
     blocked_like_values = {
         "อะไร",
         "ไร",
@@ -206,6 +226,9 @@ def is_like_question(user_message):
 
 
 def answer_from_facts(user_message, facts):
+    text = user_message.strip()
+    text = text.replace("?", "")
+    text = text.replace("มั้ย", "ไหม")
 
     if is_name_question(user_message):
         name = facts.get("name")
@@ -223,9 +246,14 @@ def answer_from_facts(user_message, facts):
             "แล้วฉันจะพยายามจำให้ดี"
         )
 
-    if is_like_question(user_message):
+    if is_like_question(user_message) or "ชอบสีอะไร" in text or "สีอะไร" in text:
         interests = facts.get("interests")
         liked = facts.get("likes")
+        favorite_color = facts.get("favorite_color")
+
+        if favorite_color and ("ชอบสีอะไร" in text or "สีอะไร" in text):
+            color_text = favorite_color if str(favorite_color).startswith("สี") else f"สี{favorite_color}"
+            return f"เท่าที่ฉันจำได้ เธอชอบ{color_text}"
 
         if interests and liked:
             return f"เท่าที่ฉันจำได้ เธอสนใจ {interests} แล้วก็ชอบ {liked}"
