@@ -20,7 +20,7 @@ from rick_prompt import build_rick_prompt
 from rag_prompt import build_safe_rag_context
 
 API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 if API_KEY:
     genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel(MODEL_NAME) if API_KEY else None
