@@ -204,10 +204,7 @@ def chat(req: ChatRequest):
         reply = "สัญญาณ Gemini ยังไม่ได้ตั้งค่า GEMINI_API_KEY"
     else:
         try:
-            response = model.generate_content(
-                model=MODEL_NAME,
-                contents=prompt,
-            )
+            response = model.generate_content(prompt)
             reply = response.text
         except Exception as error:
             reply = f"สัญญาณจากจักรวาลสะดุด: {error}"
