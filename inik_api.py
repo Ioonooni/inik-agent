@@ -15,7 +15,7 @@ from user_profile import create_user_profile, normalize_user_profile, update_use
 from modes import detect_response_mode, describe_response_mode
 from facts import extract_facts
 from prompt_builder import build_main_prompt
-from agent_router import detect_agent_handoff
+from agent_router import detect_agent_handoff, classify_agent_route
 from rick_prompt import build_rick_prompt
 from rag_prompt import build_safe_rag_context
 
@@ -103,7 +103,14 @@ def chat(req: ChatRequest):
         limit=5,
     )
 
-    agent_mode = (req.agent_mode or "inik").strip().lower()
+    requested_mode = (req.agent_mode or "auto").strip().lower()
+
+    route_decision = classify_agent_route(
+        user_message=user_message,
+        requested_mode=requested_mode,
+    )
+
+    agent_mode = route_decision.agent_mode
 
     try:
         save_message_memory_v2(
@@ -128,6 +135,49 @@ def chat(req: ChatRequest):
             rag_context=rag_context,
             user_message=user_message,
         )
+    elif agent_mode == "hybrid":
+        inik_prompt = build_main_prompt(
+            stage_description=stage_description,
+            relationship_description=relationship_description,
+            user_profile_description=user_profile_description,
+            response_mode_description=response_mode_description,
+            chat_history=chat_history,
+            user_facts=user_facts,
+            rag_context=rag_context,
+            user_message=user_message,
+            relationship_state=relationship_state,
+            days_inactive=0,
+            live_data_warning=None,
+            adaptive_personality_state=user_profile.get("adaptive_personality"),
+        )
+
+        rick_prompt = build_rick_prompt(
+            user_profile_description=user_profile_description,
+            chat_history=chat_history,
+            user_facts=user_facts,
+            rag_context=rag_context,
+            user_message=user_message,
+        )
+
+        prompt = "\n\n".join([
+            "HYBRID MODE: Heart + Mind response.",
+            "You must combine i nik's emotional continuity with Rick Royce's strategic reasoning.",
+            "Do not split into two characters unless the user explicitly asks.",
+            "First acknowledge the emotional load briefly, then analyze the decision clearly.",
+            "Avoid over-comforting. Avoid cold strategy that ignores the user's state.",
+            "",
+            "=== HEART CONTEXT: i nik ===",
+            inik_prompt,
+            "",
+            "=== MIND CONTEXT: Rick Royce ===",
+            rick_prompt,
+            "",
+            "Final answer contract:",
+            "- ตอบเป็นภาษาไทย",
+            "- เริ่มด้วยการรับรู้อารมณ์แบบสั้น ไม่ยืด",
+            "- ต่อด้วย tradeoffs / risks / opportunity cost",
+            "- จบด้วย next practical step เดียว",
+        ])
     else:
         prompt = build_main_prompt(
             stage_description=stage_description,
