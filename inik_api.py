@@ -119,6 +119,8 @@ def chat(req: ChatRequest):
             source="chat",
             metadata={
                 "agent_mode": agent_mode,
+        "route_reason": handoff_suggestion.reason if handoff_suggestion else None,
+        "route_confidence": handoff_suggestion.confidence if handoff_suggestion else None,
                 "route": "api_chat",
             },
         )
@@ -235,6 +237,8 @@ def chat(req: ChatRequest):
         "reply": reply,
         "user_id": user_id,
         "agent_mode": agent_mode,
+        "route_reason": handoff_suggestion.reason if handoff_suggestion else None,
+        "route_confidence": handoff_suggestion.confidence if handoff_suggestion else None,
         "suggested_agent": suggested_agent,
         "state": {
             "stage": stage,
