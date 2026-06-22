@@ -129,7 +129,12 @@ def extract_facts(user_message, facts):
         "อะไรคะ",
     }
 
+    skip_general_like = bool(re.search(r"สีที่(?:ฉัน|เรา)ชอบคือ", text))
+
     for pattern in like_patterns:
+        if skip_general_like:
+            break
+
         match = re.search(pattern, text)
 
         if not match:
@@ -141,6 +146,7 @@ def extract_facts(user_message, facts):
             liked
             and len(liked) <= 80
             and liked not in blocked_like_values
+            and not liked.startswith("คือ")
         ):
             _record_history(facts, "likes", liked)
             facts["likes"] = liked

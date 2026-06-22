@@ -13,7 +13,7 @@ from memory_gateway_v2 import save_message_memory_v2
 from relationship import create_relationship_state, update_relationship_state, describe_relationship_state
 from user_profile import create_user_profile, normalize_user_profile, update_user_profile, describe_user_profile
 from modes import detect_response_mode, describe_response_mode
-from facts import extract_facts
+from facts import extract_facts, answer_from_facts
 from prompt_builder import build_main_prompt
 from agent_router import detect_agent_handoff, classify_agent_route
 from rick_prompt import build_rick_prompt
@@ -83,8 +83,9 @@ def chat(req: ChatRequest):
     intimacy_score = min(100, intimacy_score + 10)
     points += 1
 
-    if user_message.startswith(("ฉันชื่อ", "ชื่อฉันคือ", "ฉันชอบ", "ฉันไม่ชอบ")):
-        user_facts = extract_facts(user_message, user_facts)
+    # Extract durable user facts from every message.
+    # extract_facts is internally guarded against common questions/noise.
+    user_facts = extract_facts(user_message, user_facts)
 
     user_profile = update_user_profile(user_message, user_profile)
     relationship_state = update_relationship_state(user_message, relationship_state)
@@ -114,6 +115,8 @@ def chat(req: ChatRequest):
 
     agent_mode = route_decision.agent_mode
 
+    handoff_suggestion = detect_agent_handoff(user_message)
+
     try:
         save_message_memory_v2(
             user_id=user_id,
@@ -121,15 +124,13 @@ def chat(req: ChatRequest):
             source="chat",
             metadata={
                 "agent_mode": agent_mode,
-        "route_reason": handoff_suggestion.reason if handoff_suggestion else None,
-        "route_confidence": handoff_suggestion.confidence if handoff_suggestion else None,
+                "route_reason": handoff_suggestion.reason if handoff_suggestion else None,
+                "route_confidence": handoff_suggestion.confidence if handoff_suggestion else None,
                 "route": "api_chat",
             },
         )
     except Exception as error:
         print(f"[memory_v2] save failed: {error}")
-
-    handoff_suggestion = detect_agent_handoff(user_message)
 
     if agent_mode == "rick_royce":
         prompt = build_rick_prompt(
@@ -198,7 +199,11 @@ def chat(req: ChatRequest):
             adaptive_personality_state=user_profile.get("adaptive_personality"),
         )
 
-    if agent_mode != "rick_royce" and handoff_suggestion:
+    direct_fact_reply = answer_from_facts(user_message, user_facts)
+
+    if direct_fact_reply:
+        reply = direct_fact_reply
+    elif agent_mode != "rick_royce" and handoff_suggestion:
         reply = handoff_suggestion.message
     elif not API_KEY:
         reply = "สัญญาณ Gemini ยังไม่ได้ตั้งค่า GEMINI_API_KEY"
