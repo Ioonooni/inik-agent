@@ -20,7 +20,9 @@ from rick_prompt import build_rick_prompt
 from rag_prompt import build_safe_rag_context
 
 API_KEY = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=API_KEY) if API_KEY else None
+if API_KEY:
+    genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel("gemini-1.5-flash") if API_KEY else None
 MODEL_NAME = "gemini-2.0-flash"
 
 app = FastAPI(title="i nik Agent API")
@@ -202,7 +204,7 @@ def chat(req: ChatRequest):
         reply = "สัญญาณ Gemini ยังไม่ได้ตั้งค่า GEMINI_API_KEY"
     else:
         try:
-            response = client.models.generate_content(
+            response = model.generate_content(
                 model=MODEL_NAME,
                 contents=prompt,
             )
