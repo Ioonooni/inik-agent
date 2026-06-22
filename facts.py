@@ -51,6 +51,22 @@ def clean_value(value):
 def extract_facts(user_message, facts):
     text = user_message.strip()
 
+    normalized = text.replace("มั้ย", "ไหม")
+
+    question_markers = [
+        "ฉันชอบอะไร",
+        "เราชอบอะไร",
+        "ฉันชอบสีอะไร",
+        "เราชอบสีอะไร",
+        "ฉันสนใจอะไร",
+        "เราสนใจอะไร",
+        "ฉันชื่ออะไร",
+        "เราชื่ออะไร",
+    ]
+
+    if any(q in normalized for q in question_markers):
+        return facts
+
     name_patterns = [
         r"ฉันชื่อ\s*([^\n,.!?]+?)(?:\s*(?:และ|แล้ว|แต่|,|\.|!|\?|$))",
         r"เราชื่อ\s*([^\n,.!?]+)",
