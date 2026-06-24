@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+from unittest.mock import patch
 
 from memory_lifecycle import (
     compress_memory_summary,
@@ -29,6 +30,76 @@ def mem(
         "last_seen_at": ts,
         "metadata": metadata or {},
     }
+
+
+def test_runtime_rag_context_uses_memory_lifecycle():
+    from rag_prompt import build_safe_rag_context
+
+    active = mem(
+        "runtime-active",
+        "ฉันชอบดูดาวเสาร์",
+        importance=95,
+        hit_count=5,
+    )
+    archived = mem(
+        "runtime-archived",
+        "ข้อมูลที่ถูก archive แล้ว",
+        importance=95,
+        hit_count=5,
+        metadata={"archived": True},
+    )
+    superseded = mem(
+        "runtime-superseded",
+        "ข้อมูลเก่าที่ถูกแทนที่",
+        importance=95,
+        hit_count=5,
+        metadata={"superseded": True},
+    )
+    low_value = mem(
+        "runtime-low",
+        "บทสนทนามูลค่าต่ำ",
+        memory_type="low_value_chat",
+        importance=10,
+        hit_count=1,
+    )
+
+    legacy = {
+        "memory_id": "runtime-legacy",
+        "user_id": "u1",
+        "content": "legacy memory ที่ยังไม่มี lifecycle fields",
+        "memory_type": "conversation_fact",
+        "metadata": {},
+    }
+
+    fake_result = {
+        "ok": True,
+        "backend": "test",
+        "results": [
+            archived,
+            superseded,
+            low_value,
+            active,
+            legacy,
+        ],
+    }
+
+    with patch(
+        "rag_prompt.retrieve_memories_v2",
+        return_value=fake_result,
+    ) as retrieve_mock:
+        context = build_safe_rag_context(
+            user_id="u1",
+            user_message="ฉันเคยบอกอะไรไว้",
+            limit=5,
+        )
+
+    assert "ฉันชอบดูดาวเสาร์" in context
+    assert "legacy memory ที่ยังไม่มี lifecycle fields" in context
+    assert "ข้อมูลที่ถูก archive แล้ว" not in context
+    assert "ข้อมูลเก่าที่ถูกแทนที่" not in context
+    assert "บทสนทนามูลค่าต่ำ" not in context
+
+    assert retrieve_mock.call_args.kwargs["limit"] == 15
 
 
 def run():
@@ -68,7 +139,9 @@ def run():
 
     assert len(active_after_limit) == 3
 
-    print("memory lifecycle ok")
+    test_runtime_rag_context_uses_memory_lifecycle()
+
+    print("memory lifecycle runtime integration ok")
 
 
 if __name__ == "__main__":

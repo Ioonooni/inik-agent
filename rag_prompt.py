@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 
 from memory_gateway_v2 import retrieve_memories_v2, list_recent_memories_v2
+from memory_lifecycle import is_archive_candidate
 
 
 NO_RAG_MEMORY = "ไม่มี RAG memory ที่เกี่ยวข้อง"
@@ -20,6 +21,50 @@ def _extract_memory_text(memory: Dict[str, Any]) -> str:
                 return value.strip()
 
     return ""
+
+
+def _select_active_memories(
+    memories: List[Dict[str, Any]],
+    limit: int,
+) -> List[Dict[str, Any]]:
+    """
+    Apply Memory V2 lifecycle policy only while building active RAG context.
+
+    Compatibility rules:
+    - explicit archived/superseded records are excluded
+    - lifecycle scoring is applied only to records carrying importance + hit_count
+    - legacy records without lifecycle fields remain available
+    - no mutation, deletion, or database writeback
+    """
+    selected: List[Dict[str, Any]] = []
+
+    for memory in memories:
+        if not isinstance(memory, dict):
+            continue
+
+        metadata = memory.get("metadata")
+        metadata = metadata if isinstance(metadata, dict) else {}
+
+        if metadata.get("archived") is True:
+            continue
+
+        if metadata.get("superseded") is True:
+            continue
+
+        lifecycle_compatible = (
+            "importance" in memory
+            and "hit_count" in memory
+        )
+
+        if lifecycle_compatible and is_archive_candidate(memory):
+            continue
+
+        selected.append(memory)
+
+        if len(selected) >= max(0, limit):
+            break
+
+    return selected
 
 
 def _format_memory_context(memories: List[Dict[str, Any]]) -> str:
@@ -58,13 +103,18 @@ def build_safe_rag_context(user_id: str, user_message: str, limit: int = 5) -> s
         if not query:
             return NO_RAG_MEMORY
 
+        candidate_limit = max(limit * 3, limit)
         result = retrieve_memories_v2(
             user_id=user_id,
             query=query,
-            limit=limit,
+            limit=candidate_limit,
         )
 
-        return _format_memory_context(result.get("results", []))
+        active_memories = _select_active_memories(
+            result.get("results", []),
+            limit=limit,
+        )
+        return _format_memory_context(active_memories)
 
     except Exception as error:
         print("[RAG PROMPT ERROR]", error)
@@ -81,13 +131,17 @@ def get_raw_memories(user_id: str, user_message: str, limit: int = 5) -> List[Di
         if not query:
             return []
 
+        candidate_limit = max(limit * 3, limit)
         result = retrieve_memories_v2(
             user_id=user_id,
             query=query,
-            limit=limit,
+            limit=candidate_limit,
         )
 
-        return result.get("results", [])
+        return _select_active_memories(
+            result.get("results", []),
+            limit=limit,
+        )
 
     except Exception as error:
         print("[RAG RAW ERROR]", error)
@@ -98,8 +152,15 @@ def get_recent_memories(user_id: str, limit: int = 5) -> List[Dict[str, Any]]:
     try:
         if not user_id:
             return []
-        result = list_recent_memories_v2(user_id=user_id, limit=limit)
-        return result.get("results", [])
+        candidate_limit = max(limit * 3, limit)
+        result = list_recent_memories_v2(
+            user_id=user_id,
+            limit=candidate_limit,
+        )
+        return _select_active_memories(
+            result.get("results", []),
+            limit=limit,
+        )
     except Exception as error:
         print("[RAG RECENT ERROR]", error)
         return []
