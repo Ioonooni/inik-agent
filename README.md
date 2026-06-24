@@ -392,7 +392,40 @@ The current version supports:
 * Reward Economy and Loyalty Progression
 * CRM Event Contract v1 (Supabase + n8n webhook)
 * Multi-User Architecture with Supabase Auth Foundation
-* Deployment-Ready Architecture (FastAPI + Streamlit)
+* Deployment-Ready Architecture (FastAPI backend + React/Vite frontend)
+
+---
+
+## V3 Runtime Integration Complete
+
+V3 moves the platform's memory intelligence and shared cognitive architecture from isolated components into the production runtime.
+
+Delivered:
+
+* Memory Lifecycle filtering integrated into RAG retrieval
+* Archived and superseded memories excluded from active context
+* Backward compatibility retained for legacy memory records
+* Shared Cognitive Layer used across i nik, Rick Royce, and hybrid response paths
+* Shared user identity, profile, relationship state, and memory context across character modes
+* Production agent routing between i nik (Heart) and Rick Royce (Mind)
+* Thai structured-fact extraction and direct recall verification
+* Favorite-color regression fixed without overwriting the user's name
+* Backend regression suite verified with 109 passing checks and 0 failures
+* FastAPI production deployment verified on Render
+* React/Vite production build verified against the deployed backend
+* Backend and frontend repositories synchronized with clean working trees
+
+Production API:
+
+`https://inik-agent.onrender.com`
+
+Frontend:
+
+`https://inik-cafe.vercel.app`
+
+Current operational limitation:
+
+Google Gemini free-tier requests may return HTTP 429 when the external quota is exhausted. This is an API quota limitation rather than a failure of the memory, routing, persistence, or retrieval architecture.
 
 ---
 
@@ -475,7 +508,7 @@ Delivered:
 * Supabase Auth Foundation
 * CRM Event Contract v1 (structured event payloads, Supabase event table, n8n webhook)
 * Loyalty Progression and Reward Economy
-* Deployment-Ready Architecture (FastAPI API + Streamlit interface)
+* Deployment-Ready Architecture (FastAPI API + React/Vite interface)
 
 ---
 
