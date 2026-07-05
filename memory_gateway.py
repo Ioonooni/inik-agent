@@ -1,3 +1,5 @@
+import logging
+
 from persistent_memory import (
     load_memory as load_memory_from_json,
     save_memory as save_memory_to_json
@@ -13,6 +15,8 @@ from supabase_memory import (
 
 from user_profile import create_user_profile
 from relationship import create_relationship_state
+
+_log = logging.getLogger("inik.supabase")
 
 
 LAST_MEMORY_STATUS = {
@@ -87,9 +91,10 @@ def load_memory(user_id=DEMO_USER_ID):
 
         return blank_memory
 
-    except Exception as error:
+    except Exception as exc:
+        _log.warning("[supabase] load failed: %s", type(exc).__name__)
         LAST_MEMORY_STATUS["supabase_load"] = False
-        LAST_MEMORY_STATUS["last_error"] = str(error)
+        LAST_MEMORY_STATUS["last_error"] = type(exc).__name__
 
         if user_id == DEMO_USER_ID:
             LAST_MEMORY_STATUS["source"] = "json_fallback_demo_user"

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import logging
 import os
 import streamlit as st
 from supabase import create_client
@@ -9,6 +10,9 @@ from persistent_memory import get_default_memory
 
 TABLE_NAME = "i_nik_memory"
 DEMO_USER_ID = "demo_user"
+
+_log = logging.getLogger("inik.supabase")
+_missing_env_warned = False
 
 
 def get_secret_value(name):
@@ -53,15 +57,22 @@ def get_redacted_supabase_url():
 
 
 def get_supabase_client():
+    global _missing_env_warned
     url = get_secret_value("SUPABASE_URL")
     key = get_secret_value("SUPABASE_KEY")
 
     if not url or not key:
+        if not _missing_env_warned:
+            _log.warning("[supabase] disabled: required environment variables are missing")
+            _missing_env_warned = True
         raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY in Streamlit secrets")
 
-    normalized_url = normalize_supabase_url(url)
-
-    return create_client(normalized_url, key)
+    try:
+        normalized_url = normalize_supabase_url(url)
+        return create_client(normalized_url, key)
+    except Exception as exc:
+        _log.warning("[supabase] client_init failed: %s", type(exc).__name__)
+        raise
 
 
 def row_to_memory(row):
@@ -102,8 +113,8 @@ def load_memory_from_supabase(user_id=DEMO_USER_ID):
 
         return row_to_memory(rows[0])
 
-    except Exception as error:
-        print(f"[Supabase load fallback] {error}")
+    except Exception as exc:
+        _log.warning("[supabase] load failed: %s", type(exc).__name__)
         return get_default_memory()
 
 
@@ -137,6 +148,6 @@ def save_memory_to_supabase(
 
         return True
 
-    except Exception as error:
-        print(f"[Supabase save failed] {error}")
+    except Exception as exc:
+        _log.warning("[supabase] save failed: %s", type(exc).__name__)
         return False
