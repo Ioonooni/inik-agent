@@ -1,6 +1,35 @@
 import re
 from datetime import datetime, timezone
 
+# Explicit update commands: presence means the user intends to set/update a fact.
+# They override any recall markers found later in the same message.
+_EXPLICIT_UPDATE_RE = re.compile(
+    r'เรียก(?:ฉัน|เรา)ว่า|ชื่อเล่นคือ|จำไว้(?:ด้วย)?'
+)
+
+# Structural markers for recall/question/complaint intent.
+# Only tested when no explicit update command is found.
+_RECALL_INTENT_RE = re.compile(
+    r'ทำไม(?:จำ|ไม่จำ|ไม่)|'
+    r'จำ(?:ได้|ไม่ได้)(?:\s*(?:ไหม|มั้ย|ปะ))?|'
+    r'ยังจำ|'
+    r'รู้(?:ไหม|มั้ย)|'
+    r'(?:ไหม|มั้ย|ปะ|หรือเปล่า)\s*$'
+)
+
+
+def _has_recall_intent(text: str) -> bool:
+    """
+    Return True when the message is asking about or complaining about recall
+    rather than declaring new information to store.
+
+    Explicit update commands win: 'เรียกฉันว่าเลม่อน จำไว้ด้วย' returns False
+    because the update command overrides the recall word.
+    """
+    if _EXPLICIT_UPDATE_RE.search(text):
+        return False
+    return bool(_RECALL_INTENT_RE.search(text))
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -24,6 +53,7 @@ def clean_value(value):
         " บอกหรือยัง",
         " จำได้ไหม",
         " จำได้มั้ย",
+        " จำไว้ด้วย",
         " รู้ไหม",
         " รู้มั้ย",
         " ใช่ไหม",
@@ -101,6 +131,7 @@ def extract_facts(user_message, facts):
             name
             and len(name) <= 30
             and name not in blocked_words
+            and not _has_recall_intent(text)
         ):
             _record_history(facts, "name", name)
             facts["name"] = name
@@ -130,7 +161,7 @@ def extract_facts(user_message, facts):
 
         color = clean_value(match.group(1))
 
-        if color and len(color) <= 40:
+        if color and len(color) <= 40 and not _has_recall_intent(text):
             _record_history(facts, "favorite_color", color)
             facts["favorite_color"] = color
             _record_history(facts, "likes", color if color.startswith("สี") else f"สี{color}")
@@ -167,6 +198,7 @@ def extract_facts(user_message, facts):
             and len(liked) <= 80
             and liked not in blocked_like_values
             and not liked.startswith("คือ")
+            and not _has_recall_intent(text)
         ):
             _record_history(facts, "likes", liked)
             facts["likes"] = liked
@@ -193,13 +225,14 @@ def extract_facts(user_message, facts):
             interest
             and len(interest) <= 120
             and interest not in blocked_interest_values
+            and not _has_recall_intent(text)
         ):
             _record_history(facts, "interests", interest)
             facts["interests"] = interest
 
 
     pet_match = re.search(r"(?:ฉันมีนกชื่อ|นกชื่อ|ฉันมีสัตว์เลี้ยงชื่อ|สัตว์เลี้ยงชื่อ)\s*([ก-๙A-Za-z0-9_\-]+)", text)
-    if pet_match:
+    if pet_match and not _has_recall_intent(text):
         facts["pet_name"] = pet_match.group(1).strip()
 
     return facts

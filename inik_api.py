@@ -51,7 +51,7 @@ class ChatRequest(BaseModel):
     user_id: str = ""
     username: str = "traveler"
     message: str
-    agent_mode: str = "inik"
+    agent_mode: str = "auto"
 
 @app.get("/health")
 def health():
@@ -80,7 +80,7 @@ def chat(req: ChatRequest):
     recent_messages = user_profile.get("recent_messages", [])
     recent_messages.append({"role": "user", "content": user_message})
 
-    intimacy_score = min(100, intimacy_score + 10)
+    intimacy_score = min(100, intimacy_score + 1)
     points += 1
 
     # Extract durable user facts from every message.
@@ -90,7 +90,7 @@ def chat(req: ChatRequest):
     user_profile = update_user_profile(user_message, user_profile)
     relationship_state = update_relationship_state(user_message, relationship_state)
 
-    stage = get_stage(intimacy_score)
+    stage = relationship_state.get("relationship_stage", get_stage(intimacy_score))
     stage_description = get_stage_description(stage)
     relationship_description = describe_relationship_state(relationship_state)
     user_profile_description = describe_user_profile(user_profile)
@@ -108,12 +108,20 @@ def chat(req: ChatRequest):
 
     requested_mode = (req.agent_mode or "auto").strip().lower()
 
+    # Restore persisted mode when the request doesn't carry an explicit selection.
+    if requested_mode == "auto":
+        requested_mode = user_profile.get("preferred_agent_mode", "auto")
+
     route_decision = classify_agent_route(
         user_message=user_message,
         requested_mode=requested_mode,
     )
 
     agent_mode = route_decision.agent_mode
+
+    # Persist explicit mode selections so they survive the next request.
+    if (req.agent_mode or "auto").strip().lower() in ("inik", "rick_royce", "hybrid"):
+        user_profile["preferred_agent_mode"] = agent_mode
 
     handoff_suggestion = detect_agent_handoff(user_message)
 
