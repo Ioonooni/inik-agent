@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 # Explicit update commands: presence means the user intends to set/update a fact.
 # They override any recall markers found later in the same message.
 _EXPLICIT_UPDATE_RE = re.compile(
-    r'เรียก(?:ฉัน|เรา)ว่า|ชื่อเล่นคือ|จำไว้(?:ด้วย)?'
+    r'เรียก(?:ฉัน|เรา)ว่า|ชื่อเล่น(?:ฉัน|เรา)?คือ|จำไว้(?:ด้วย)?'
 )
 
 # Structural markers for recall/question/complaint intent.
@@ -100,6 +100,7 @@ def extract_facts(user_message, facts):
     name_patterns = [
         r"ฉันชื่อ\s*([^\n,.!?]+?)(?:\s*(?:และ|แล้ว|แต่|,|\.|!|\?|$))",
         r"เราชื่อ\s*([^\n,.!?]+)",
+        r"ชื่อเล่น(?:ฉัน|เรา)?คือ\s*([^\n,.!?]+)",
         r"ชื่อฉันคือ\s*([^\n,.!?]+)",
         r"ชื่อของฉันคือ\s*([^\n,.!?]+)",
         r"เรียกฉันว่า\s*([^\n,.!?]+)",
