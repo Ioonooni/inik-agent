@@ -123,28 +123,44 @@ def test_suggested_agent_gate_blocks_when_mode_is_rick():
     # Gate condition is False → suggested_agent would be None
 
 
-# ── 5. Preference restore path ───────────────────────────────────────────────
+# ── 5. Mode resolution path ──────────────────────────────────────────────────
 
-def _resolve_requested_mode(agent_mode_explicit: bool, raw: str, preferred: str | None) -> str:
-    """Mirrors the routing branch in inik_api.py."""
+def _resolve_requested_mode(agent_mode_explicit: bool, raw: str) -> str:
+    """Mirrors the routing branch in inik_api.py.
+    preferred_agent_mode is intentionally not consulted for omitted requests.
+    """
     if agent_mode_explicit:
         return (raw or "inik").strip().lower()
-    return (preferred or "inik").strip().lower()
+    return "inik"
 
 
-def test_restore_uses_saved_preference_when_omitted():
-    """Omitted + saved preference "rick_royce" → requested_mode resolved to rick_royce."""
-    resolved = _resolve_requested_mode(False, "inik", "rick_royce")
+def test_omitted_plus_saved_rick_preference_routes_to_inik():
+    """Omitted agent_mode must ignore preferred_agent_mode=rick_royce and use inik."""
+    resolved = _resolve_requested_mode(False, "inik")
+    assert resolved == "inik", "saved rick_royce preference must not trap user in Rick mode"
+
+
+def test_omitted_does_not_use_preferred_agent_mode():
+    """Omitted agent_mode always resolves to inik regardless of any saved preference."""
+    for saved_pref in ("rick_royce", "hybrid", "inik", None):
+        resolved = _resolve_requested_mode(False, "inik")
+        assert resolved == "inik", f"preferred={saved_pref!r} must not influence omitted mode"
+
+
+def test_explicit_rick_royce_routes_to_rick_royce():
+    """Explicit rick_royce → requested_mode is rick_royce."""
+    resolved = _resolve_requested_mode(True, "rick_royce")
     assert resolved == "rick_royce"
 
 
-def test_restore_defaults_to_inik_when_no_preference():
-    """Omitted + no saved preference → requested_mode resolved to inik."""
-    resolved = _resolve_requested_mode(False, "inik", None)
+def test_explicit_inik_routes_to_inik():
+    """Explicit inik → requested_mode is inik."""
+    resolved = _resolve_requested_mode(True, "inik")
     assert resolved == "inik"
 
 
 def test_explicit_overrides_saved_preference():
-    """Explicit "inik" overrides a saved "rick_royce" preference."""
-    resolved = _resolve_requested_mode(True, "inik", "rick_royce")
-    assert resolved == "inik"
+    """Explicit send always wins over any hypothetical saved preference."""
+    assert _resolve_requested_mode(True, "inik") == "inik"
+    assert _resolve_requested_mode(True, "rick_royce") == "rick_royce"
+    assert _resolve_requested_mode(True, "hybrid") == "hybrid"

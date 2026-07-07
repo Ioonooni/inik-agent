@@ -114,8 +114,7 @@ def chat(req: ChatRequest):
     if agent_mode_explicit:
         requested_mode = (req.agent_mode or "inik").strip().lower()
     else:
-        # Client omitted agent_mode — restore saved preference or default to inik.
-        requested_mode = (user_profile.get("preferred_agent_mode") or "inik").strip().lower()
+        requested_mode = "inik"
 
     route_decision = classify_agent_route(
         user_message=user_message,
