@@ -27,3 +27,6 @@ readme_reality_check.sh
 # One-off patch scripts and backup snapshots
 fix_*_runtime.py
 *.bak*
+
+# Frontend source tree (lives in Ioonooni/inik-cafe, not this repo)
+inik-cafe/
