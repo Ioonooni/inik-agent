@@ -51,7 +51,7 @@ class ChatRequest(BaseModel):
     user_id: str = ""
     username: str = "traveler"
     message: str
-    agent_mode: str = "auto"
+    agent_mode: str = "inik"
 
 @app.get("/health")
 def health():
@@ -106,11 +106,16 @@ def chat(req: ChatRequest):
         limit=5,
     )
 
-    requested_mode = (req.agent_mode or "auto").strip().lower()
+    # Pydantic v2: model_fields_set contains only fields the client sent in the
+    # request body. Distinguishes "client omitted agent_mode" (Pydantic default
+    # fires) from "client explicitly sent agent_mode: inik".
+    agent_mode_explicit = "agent_mode" in req.model_fields_set
 
-    # Restore persisted mode when the request doesn't carry an explicit selection.
-    if requested_mode == "auto":
-        requested_mode = user_profile.get("preferred_agent_mode", "auto")
+    if agent_mode_explicit:
+        requested_mode = (req.agent_mode or "inik").strip().lower()
+    else:
+        # Client omitted agent_mode — restore saved preference or default to inik.
+        requested_mode = (user_profile.get("preferred_agent_mode") or "inik").strip().lower()
 
     route_decision = classify_agent_route(
         user_message=user_message,
@@ -119,8 +124,9 @@ def chat(req: ChatRequest):
 
     agent_mode = route_decision.agent_mode
 
-    # Persist explicit mode selections so they survive the next request.
-    if (req.agent_mode or "auto").strip().lower() in ("inik", "rick_royce", "hybrid"):
+    # Persist only explicit named mode selections. Never persist a Pydantic default
+    # or "auto" — that would silently overwrite the user's saved preference.
+    if agent_mode_explicit and req.agent_mode.strip().lower() in ("inik", "rick_royce", "hybrid"):
         user_profile["preferred_agent_mode"] = agent_mode
 
     handoff_suggestion = detect_agent_handoff(user_message)
