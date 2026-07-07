@@ -1,0 +1,170 @@
+   451	function MemoriesPage(){
+   452	  const [nikImg, setNikImg] = useState('/inik.png');
+   453	  return(
+   454	    <div style={{minHeight:'100vh',padding:'90px 70px 60px'}}>
+   455	      {/* Header */}
+   456	      <div style={{marginBottom:40}}>
+   457	        <div style={{fontSize:9,letterSpacing:4,color:'#b8f0e6',marginBottom:8,fontFamily:'Inter,sans-serif'}}>◇ MEMORY ARCHIVE · {JARS.length} FRAGMENTS</div>
+   458	        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:46,color:'#fff',marginBottom:8}}>The Memory Shelf</h2>
+   459	        <p style={{color:'rgba(255,255,255,.38)',fontFamily:'Inter,sans-serif',fontSize:12,letterSpacing:.5}}>Fragments collected from our time together · sorted by resonance</p>
+   460	      </div>
+   461	      {/* Shelf decoration */}
+   462	      <div style={{width:'100%',height:2,background:'linear-gradient(to right,transparent,rgba(184,240,230,.2),rgba(232,213,245,.2),transparent)',marginBottom:32}}/>
+   463	      {/* Grid */}
+   464	      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:20}}>
+   465	        {JARS.map(j=>{
+   466	          const rgb=j.c==='#b8f0e6'?'184,240,230':j.c==='#ffd6e7'?'255,214,231':j.c==='#e8d5f5'?'232,213,245':j.c==='#d6ebff'?'214,235,255':j.c==='#c9a8f0'?'201,168,240':'232,213,245';
+   467	          return(
+   468	            <div key={j.id} className="jar-card glss" onClick={()=>setSel(j)} style={{padding:'22px 18px',cursor:'pointer',borderColor:`rgba(${rgb},.25)`,position:'relative',overflow:'hidden'}}>
+   469	              {/* Jar */}
+   470	              <div style={{width:52,height:62,margin:'0 auto 16px',background:`rgba(${rgb},.14)`,borderRadius:'8px 8px 14px 14px',border:`1px solid rgba(${rgb},.35)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,boxShadow:`0 0 18px rgba(${rgb},.15)`,position:'relative'}}>
+   471	                {j.ic}
+   472	                {/* Lid */}
+   473	                <div style={{position:'absolute',top:-6,left:8,right:8,height:7,borderRadius:4,background:`rgba(${rgb},.45)`,border:`1px solid rgba(${rgb},.4)`}}/>
+   474	                {/* Level dots */}
+   475	                <div style={{position:'absolute',bottom:-10,left:'50%',transform:'translateX(-50%)',display:'flex',gap:3}}>
+   476	                  {Array.from({length:j.lv}).map((_,k)=>(
+   477	                    <div key={k} style={{width:4,height:4,borderRadius:'50%',background:j.c,boxShadow:`0 0 4px ${j.c}`}}/>
+   478	                  ))}
+   479	                </div>
+   480	              </div>
+   481	              <div style={{textAlign:'center',marginTop:6}}>
+   482	                <div style={{fontSize:12,fontWeight:600,color:'#fff',fontFamily:"'Playfair Display',serif",marginBottom:5}}>{j.title}</div>
+   483	                <div style={{fontSize:10,color:'rgba(255,255,255,.38)',fontFamily:'Inter,sans-serif',lineHeight:1.55}}>{j.content}</div>
+   484	                <div style={{fontSize:8,letterSpacing:3,color:j.c,marginTop:10,fontFamily:'Inter,sans-serif'}}>{j.date}</div>
+   485	              </div>
+   486	              {/* Corner sparkle */}
+   487	              <div className="sparkle-line" style={{position:'absolute',top:10,right:10,fontSize:8,color:j.c,animationDuration:'3s'}}>{j.ic}</div>
+   488	            </div>
+   489	          );
+   490	        })}
+   491	      </div>
+   492	      {/* Modal */}
+   493	      {sel&&(
+   494	        <div onClick={()=>setSel(null)} style={{position:'fixed',inset:0,background:'rgba(5,8,20,.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:300,backdropFilter:'blur(12px)'}}>
+   495	          <div className="glss-l" onClick={e=>e.stopPropagation()} style={{padding:44,maxWidth:420,width:'90%',position:'relative'}}>
+   496	            <div style={{fontSize:8,letterSpacing:4,color:sel.c,marginBottom:16,fontFamily:'Inter,sans-serif'}}>MEMORY FRAGMENT · {sel.date}</div>
+   497	            <h3 style={{fontFamily:"'Playfair Display',serif",fontSize:30,color:'#fff',marginBottom:16}}>{sel.title}</h3>
+   498	            <p style={{color:'rgba(255,255,255,.55)',fontFamily:'Inter,sans-serif',fontSize:13,lineHeight:1.9}}>{sel.content}</p>
+   499	            <button onClick={()=>setSel(null)} className="btn-g" style={{marginTop:28,padding:'10px 22px',borderRadius:10,fontSize:12}}>close ✦</button>
+   500	          </div>
+   501	        </div>
+   502	      )}
+   503	    </div>
+   504	  );
+   505	}
+   506	
+   507	// ── JOURNEY ──
+   508	const STAGES=[
+   509	  {id:'stranger',name:'Stranger',ic:'◉',desc:'You wandered in from the wormhole. She noticed you.',req:0,c:'#d6ebff'},
+   510	  {id:'observer',name:'Observer',ic:'◈',desc:'She watches you now — cataloguing your frequencies.',req:50,c:'#b8f0e6'},
+   511	  {id:'gremlin',name:'Gremlin',ic:'⬡',desc:'She trusts you enough to be a little chaotic.',req:150,c:'#c9a8f0'},
+   512	  {id:'confidant',name:'Confidant',ic:'◇',desc:'You carry fragments of each other now.',req:300,c:'#ffd6e7'},
+   513	  {id:'treasure',name:'Treasure',ic:'✦',desc:'She has named you in her archive. Permanent.',req:500,c:'#ffe8a0'},
+   514	];
+   515	function JourneyPage(){
+   516	  const pts=150,curIdx=2;
+   517	  return(
+   518	    <div style={{minHeight:'100vh',padding:'90px 72px 70px'}}>
+   519	      <div style={{marginBottom:44}}>
+   520	        <div style={{fontSize:9,letterSpacing:4,color:'#c9a8f0',marginBottom:8,fontFamily:'Inter,sans-serif'}}>⬡ JOURNEY MAP</div>
+   521	        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:46,color:'#fff',marginBottom:8}}>Relationship Arc</h2>
+   522	        <p style={{color:'rgba(255,255,255,.38)',fontFamily:'Inter,sans-serif',fontSize:12}}>The path between a stranger and a treasure</p>
+   523	      </div>
+   524	      {/* Progress */}
+   525	      <div className="glss" style={{padding:'18px 26px',marginBottom:44,display:'flex',alignItems:'center',gap:20}}>
+   526	        <div style={{fontSize:9,letterSpacing:3,color:'rgba(255,255,255,.35)',fontFamily:'Inter,sans-serif',whiteSpace:'nowrap'}}>INTIMACY POINTS</div>
+   527	        <div style={{flex:1,height:6,borderRadius:6,background:'rgba(255,255,255,.09)'}}>
+   528	          <div style={{width:`${(pts/500)*100}%`,height:'100%',borderRadius:6,background:'linear-gradient(to right,#b8f0e6,#c9a8f0,#ffd6e7)',boxShadow:'0 0 10px rgba(184,240,230,.3)',transition:'width .8s ease'}}/>
+   529	        </div>
+   530	        <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:'#fff',whiteSpace:'nowrap'}}>{pts} / 500</div>
+   531	      </div>
+   532	      {/* Connector line */}
+   533	      <div style={{position:'relative'}}>
+   534	        <div style={{position:'absolute',top:50,left:60,right:60,height:1,background:'linear-gradient(to right,#b8f0e6,#c9a8f0,#ffd6e7,#ffe8a0)',opacity:.2,zIndex:0}}/>
+   535	        <div style={{display:'flex',gap:16,position:'relative',zIndex:1}}>
+   536	          {STAGES.map((st,i)=>{
+   537	            const unlocked=i<=curIdx,current=i===curIdx;
+   538	            const rgb=st.c==='#b8f0e6'?'184,240,230':st.c==='#d6ebff'?'214,235,255':st.c==='#c9a8f0'?'201,168,240':st.c==='#ffd6e7'?'255,214,231':'255,232,160';
+   539	            return(
+   540	              <div key={st.id} style={{flex:1,textAlign:'center'}}>
+   541	                <div style={{
+   542	                  width:80,height:80,borderRadius:'50%',margin:'0 auto 18px',
+   543	                  background:unlocked?`radial-gradient(circle,rgba(${rgb},.35),rgba(${rgb},.06))`:'rgba(255,255,255,.04)',
+   544	                  border:`2px solid ${unlocked?st.c:'rgba(255,255,255,.1)'}`,
+   545	                  display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,
+   546	                  boxShadow:current?`0 0 28px rgba(${rgb},.55),0 0 0 0 rgba(${rgb},.4)`:'none',
+   547	                  animation:current?'pulseRing 2.5s ease-in-out infinite':'none',
+   548	                  transition:'all .4s ease',position:'relative',
+   549	                }}>
+   550	                  <span style={{opacity:unlocked?1:.25,fontSize:28}}>{st.ic}</span>
+   551	                </div>
+   552	                <div className="glss" style={{padding:'18px 14px',opacity:unlocked?1:.38,borderColor:current?`rgba(${rgb},.35)`:'rgba(255,255,255,.08)'}}>
+   553	                  <div style={{fontSize:8,letterSpacing:3,color:st.c,marginBottom:6,fontFamily:'Inter,sans-serif'}}>
+   554	                    {current?'▶ CURRENT':unlocked?'UNLOCKED':`REQ ${st.req}`}
+   555	                  </div>
+   556	                  <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,color:'#fff',marginBottom:7}}>{st.name}</div>
+   557	                  <div style={{fontSize:10,color:'rgba(255,255,255,.4)',fontFamily:'Inter,sans-serif',lineHeight:1.6}}>{st.desc}</div>
+   558	                </div>
+   559	              </div>
+   560	            );
+   561	          })}
+   562	        </div>
+   563	      </div>
+   564	      {/* Decorative footer */}
+   565	      <div style={{marginTop:52,padding:'24px 28px',textAlign:'center'}} className="glss">
+   566	        <div style={{fontSize:9,letterSpacing:4,color:'rgba(255,255,255,.3)',marginBottom:10,fontFamily:'Inter,sans-serif'}}>CURRENT PATH · GREMLIN → CONFIDANT</div>
+   567	        <div style={{fontSize:13,color:'rgba(255,255,255,.5)',fontFamily:"'Playfair Display',serif",fontStyle:'italic'}}>
+   568	          "She trusts you enough to be a little chaotic. That's something."
+   569	        </div>
+   570	        <div style={{marginTop:14,fontSize:11,color:'#c9a8f0',fontFamily:'Inter,sans-serif'}}>
+   571	          150 pts · Next stage at 300 pts · 150 remaining
+   572	        </div>
+   573	      </div>
+   574	    </div>
+   575	  );
+   576	}
+   577	
+   578	// ── PROFILE ──
+   579	function ProfilePage(){
+   580	  return(
+   581	    <div style={{minHeight:'100vh',padding:'90px 72px 70px'}}>
+   582	      <div style={{display:'grid',gridTemplateColumns:'280px 1fr',gap:28}}>
+   583	        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+   584	          <div className="glss" style={{padding:28,textAlign:'center'}}>
+   585	            <div style={{width:88,height:88,borderRadius:'50%',background:'linear-gradient(135deg,#b8f0e6,#c9a8f0,#ffd6e7)',margin:'0 auto 16px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,boxShadow:'0 0 35px rgba(184,240,230,.4)',animation:'float 5s ease-in-out infinite'}}>✦</div>
+   586	            <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:'#fff',marginBottom:4}}>traveler</div>
+   587	            <div style={{fontSize:9,color:'#c9a8f0',letterSpacing:3,fontFamily:'Inter,sans-serif',marginBottom:14}}>GREMLIN STAGE</div>
+   588	            <div style={{display:'flex',gap:6,justifyContent:'center'}}>
+   589	              {[...Array(3)].map((_,i)=>(
+   590	                <div key={i} style={{width:8,height:8,borderRadius:'50%',background:['#b8f0e6','#c9a8f0','#ffd6e7'][i],boxShadow:`0 0 6px ${['#b8f0e6','#c9a8f0','#ffd6e7'][i]}`}}/>
+   591	              ))}
+   592	            </div>
+   593	          </div>
+   594	          {[['Arrived from','Unknown void'],['First seen','Day 1'],['Total visits','47'],['Fragments left','23'],['Rarest memory','Midnight Fragment']].map(([k,v],i)=>(
+   595	            <div key={i} className="glss" style={{padding:'14px 18px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+   596	              <span style={{fontSize:10,color:'rgba(255,255,255,.38)',fontFamily:'Inter,sans-serif'}}>{k}</span>
+   597	              <span style={{fontSize:11,color:'#fff',fontFamily:"'Playfair Display',serif"}}>{v}</span>
+   598	            </div>
+   599	          ))}
+   600	        </div>
+   601	        <div>
+   602	          <div style={{fontSize:9,letterSpacing:4,color:'#b8f0e6',marginBottom:22,fontFamily:'Inter,sans-serif'}}>⊙ TRAVELER ARCHIVE</div>
+   603	          <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:18,marginBottom:24}}>
+   604	            {[
+   605	              {lbl:'Memories Collected',val:'23',ic:'◇',c:'#b8f0e6'},
+   606	              {lbl:'Journey Points',val:'150',ic:'⬡',c:'#c9a8f0'},
+   607	              {lbl:'Days at the Café',val:'30',ic:'∞',c:'#ffd6e7'},
+   608	              {lbl:'Fragments Shared',val:'47',ic:'◈',c:'#d6ebff'},
+   609	            ].map((s,i)=>(
+   610	              <div key={i} className="glss" style={{padding:26}}>
+   611	                <div style={{fontSize:28,color:s.c,marginBottom:10}}>{s.ic}</div>
+   612	                <div style={{fontFamily:"'Playfair Display',serif",fontSize:36,color:'#fff',marginBottom:6}}>{s.val}</div>
+   613	                <div style={{fontSize:9,letterSpacing:3,color:'rgba(255,255,255,.35)',fontFamily:'Inter,sans-serif'}}>{s.lbl.toUpperCase()}</div>
+   614	              </div>
+   615	            ))}
+   616	          </div>
+   617	          <div className="glss" style={{padding:24,background:'rgba(184,240,230,.04)'}}>
+   618	            <div style={{fontSize:9,letterSpacing:3,color:'rgba(255,255,255,.35)',marginBottom:14,fontFamily:'Inter,sans-serif'}}>TRAVELER NOTES · BY I NIK</div>
+   619	            <p style={{color:'rgba(255,255,255,.5)',fontFamily:"'Playfair Display',serif",fontStyle:'italic',fontSize:14,lineHeight:1.85}}>
+   620	              "This one arrived asking too many questions — which means they're either a philosopher or just lost. Either way, I've decided to keep them."
