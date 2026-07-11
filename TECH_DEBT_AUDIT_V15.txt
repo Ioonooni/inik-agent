@@ -1,0 +1,80 @@
+TECH DEBT AUDIT V1.5 — CONDENSED SUMMARY
+=========================================
+Date: 2026-07-11
+Repos: Ioonooni/inik-agent, Ioonooni/inik-cafe
+
+TOTAL DEBT COUNT
+----------------
+39 items total
+  Critical : 1
+  High     : 7
+  Medium   : 13
+  Low      : 18
+
+Categories: ARCH(6), DATA(4), TEST(6), DEPLOY(7), FE(7), BE(6), SEC(3)
+
+TOP 5 BY PRIORITY SCORE
+------------------------
+1. DEPLOY-04  Unpinned requirements.txt                score 2.70  XS effort
+   fastapi, uvicorn, google-generativeai, streamlit unpinned → next Render deploy
+   may silently pull breaking versions
+
+2. SEC-01     Client-controlled user_id, no auth       score 2.40  M effort
+   Any caller can read/write any user's memory by passing arbitrary user_id;
+   no JWT, no session, no rate limit
+
+3. BE-02      print(str(error)) security violation     score 1.40  XS effort
+   inik_api.py:146 — raw exception string may expose Supabase URLs/keys in logs
+
+4. TEST-02    No FastAPI TestClient endpoint tests     score 1.20  S effort
+   /api/chat and /api/state never tested end-to-end; routing regressions
+   are invisible until production
+
+5. FE-02      No mobile layout                        score 1.13  M effort
+   Fixed pixel widths throughout App.tsx; no @media queries; unusable on
+   phones despite being a chat product
+
+FIX NOW (within 24 hours)
+--------------------------
+BE-02    inik_api.py:146 — replace print(f"[memory_v2] save failed: {error}")
+         with print(f"[memory_v2] save failed: {type(error).__name__}")
+         Effort: XS (~5 min)
+
+DEPLOY-04  Pin fastapi, uvicorn, google-generativeai, streamlit in requirements.txt
+           Effort: XS (~20 min)
+
+TEST-03  test_v3_runtime_routing.py — rename run() to test_routing_cases()
+         so pytest collects the 5 routing assertions that are currently silent
+         Effort: XS (~2 min)
+
+BEFORE NEXT MILESTONE (~17 items)
+----------------------------------
+DATA-01   recent_messages stored inside user_profile JSON blob; no size cap
+TEST-01   test_v3_contract_restore.py uses mirror _Req model instead of real ChatRequest
+TEST-02   Add FastAPI TestClient tests for /api/chat and /api/state
+ARCH-02   app.py (Streamlit, 1098 lines) diverged from inik_api.py — parallel logic
+ARCH-03   supabase_memory.py imports streamlit at module level (FastAPI path dep)
+ARCH-04   memory_gateway_v2.py returns str(error)/str(exc) in dicts (security + ARCH)
+BE-01     inik_api.py intimacy +1 vs app.py +10 — behavioral divergence
+BE-03     agent_mode persisted inside user_profile JSON; not a first-class DB column
+BE-04     build_chat_history() limit=10 slices before mode-filtering; effective window smaller
+BE-05     no input length cap on user_message before Gemini call
+DEPLOY-02 Render free tier sleeps after inactivity; no keep-alive
+DEPLOY-03 No staging environment; all deploys go directly to production
+DEPLOY-05 No structured logging; all observability via print()
+DEPLOY-07 inik-cafe-source.zip (351KB) permanently in git history (commit 07621ad)
+FE-02     No mobile layout (see Fix Now list; escalated)
+FE-03     App.tsx is 891 lines — 8+ page components, all CSS, all state in one file
+FE-06     react-router-dom in production deps but never imported or used
+SEC-02    No rate limiting on /api/chat; single user_id can exhaust Gemini quota
+
+TOTAL ESTIMATED CLEANUP TIME
+-----------------------------
+Fix Now              :  ~1 hour
+Before Milestone     :  ~20–26 hours
+Grand total          :  ~21–27 hours
+
+REPORT PATHS
+------------
+Full report  : /home/user/inik-agent/TECH_DEBT_AUDIT_V15.md
+This summary : /home/user/inik-agent/TECH_DEBT_AUDIT_V15.txt
