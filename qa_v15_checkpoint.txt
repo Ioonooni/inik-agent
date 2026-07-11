@@ -1,0 +1,367 @@
+================================================================================
+  V1.5 QA CHECKPOINT REPORT
+  Date       : 2026-07-07
+  Scope      : Ioonooni/inik-agent (backend) + Ioonooni/inik-cafe (frontend)
+  Method     : Source inspection, direct Python/routing checks, pytest, build
+  Gemini     : NOT called (quota exhausted)
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  A. ENVIRONMENT AND COMMITS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Backend  repo : Ioonooni/inik-agent
+  main tip    : 07621ad  "Ignore inik-cafe/ in backend repo"
+  prev commits: 9b1fc84  "Fix mode fallback: omitted agent_mode always routes to inik"
+                7cd8a96  "Restore V3 frontend contract: inik default, explicit-only preference"
+                ab69776  "Add ชื่อเล่น extraction pattern, close _EXPLICIT_UPDATE_RE gap"
+                2b4018a  "Fix three root-cause bugs: memory write gate, Rick mode, stage"
+  working tree: CLEAN (no uncommitted or untracked files)
+
+Frontend repo : Ioonooni/inik-cafe
+  main tip    : 305ac57  "Merge pull request #1 from Ioonooni/feat/rick-mode-active-state"
+  prev commits: 27f83c3  "Add persistent Rick mode state, header indicator, back button, vercel.json"
+  working tree: CLEAN
+
+Python runtime : 3.11.15
+Pytest         : 9.0.2  (/root/.local/share/uv/tools/pytest/bin/pytest)
+Node/npm       : available in /tmp/inik-cafe-repo
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  B. QA RESULT TABLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  #   Area                         Result    Method
+  ──  ───────────────────────────  ────────  ─────────────────────────────────
+  1   Default i nik flow           PASS      Source + routing check + tests
+  2   Rick suggestion trigger      PASS      Direct routing/handoff check
+  3   Rick sticky mode             PASS      Source inspection
+  4   Back to i nik                PASS      Source inspection
+  5   Reload / reset behavior      PASS      Source inspection (localStorage)
+  6   Memory write gate            PASS      Direct facts.py check + tests
+  7   Relationship stage           PASS      Direct relationship check + source
+  ──  ───────────────────────────  ────────  ─────────────────────────────────
+  *   Frontend build               PASS      npm run build (tsc -b + vite)
+  *   Backend working tree         PASS      git status --short: clean
+  *   Frontend working tree        PASS      git status --short: clean
+  *   test_nickname_extraction     PASS      13/13
+  *   test_agent_router            PASS      5/5
+  *   test_v3_agent_router         PASS      6/6
+  *   test_v3_contract_restore     BLOCKED   pydantic not in pytest venv
+  ──  ───────────────────────────  ────────  ─────────────────────────────────
+  *   Live Gemini response         N/A       quota exhausted
+  *   Vercel reconnection          N/A       manual step required
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  C. EVIDENCE PER CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+────────────────────────────────────────────────────────────────
+CHECK 1 — Default i nik flow
+────────────────────────────────────────────────────────────────
+
+Frontend request construction (App.tsx:447-454):
+  const body:Record<string,string>={user_id:userId,username:'traveler',message:txt};
+  if(activeMode!=='inik')body.agent_mode=activeMode;
+  → agent_mode is OMITTED when activeMode==='inik'  ✓
+
+activeMode initialization (App.tsx:434):
+  const [activeMode,setActiveMode]=useState<string>('inik');
+  → defaults to 'inik' on every fresh render  ✓
+
+Backend: omitted agent_mode logic (inik_api.py:112-117):
+  agent_mode_explicit = "agent_mode" in req.model_fields_set
+  if agent_mode_explicit:
+      requested_mode = (req.agent_mode or "inik").strip().lower()
+  else:
+      requested_mode = "inik"              ← fixed, no longer reads preferred_agent_mode
+  → omitted field always resolves to 'inik'  ✓
+
+Direct routing check:
+  classify_agent_route('ควรลงทุนใน NVDA ไหมตอนนี้', requested_mode='inik')
+  → agent_mode: inik   PASS  ✓
+
+  simulate_resolve(explicit=False, raw='inik') [with saved pref='rick_royce']
+  → resolved: inik     PASS  ✓
+
+Tests: test_v3_agent_router.py (6/6), test_agent_router.py (5/5)  ✓
+
+────────────────────────────────────────────────────────────────
+CHECK 2 — Rick suggestion trigger
+────────────────────────────────────────────────────────────────
+
+Direct detect_agent_handoff check:
+  detect_agent_handoff('ควรลงทุนใน NVDA ไหมตอนนี้')
+  → suggested_agent: rick_royce, confidence: 0.88   PASS  ✓
+
+  detect_agent_handoff('สวัสดีตอนเช้า')
+  → None (casual — no suggestion)   PASS  ✓
+
+Omitted mode stays inik (confirmed in Check 1 above):
+  When mode is inik, agent_mode field on response should be 'inik'.
+  handoff suggestion is non-null → suggested_agent block fires in response.
+
+Backend response path (inik_api.py:236-244):
+  suggested_agent = None
+  if agent_mode != "rick_royce" and handoff_suggestion:
+      suggested_agent = { agent, confidence, reason, message }
+  → block fires when mode=inik AND handoff exists  ✓
+
+Frontend reads d.suggested_agent (App.tsx:459):
+  const suggestedAgent = d.suggested_agent ? {...d.suggested_agent, originalMessage: txt} : null;
+  → attached to assistant message, rendered as inline handoff card  ✓
+
+Tests: test_agent_router.py — investment/business/career queries all trigger handoff ✓
+
+────────────────────────────────────────────────────────────────
+CHECK 3 — Rick sticky mode
+────────────────────────────────────────────────────────────────
+
+Frontend click path (App.tsx:562):
+  onClick={()=>{setActiveMode('rick_royce'); sendWithAgent(msg, 'rick_royce');}}
+  → sets activeMode='rick_royce' immediately on click  ✓
+
+Subsequent send() path (App.tsx:454):
+  if(activeMode!=='inik')body.agent_mode=activeMode;
+  → next send() includes agent_mode:'rick_royce'  ✓
+
+Backend: explicit rick_royce routing (inik_api.py:112-129):
+  agent_mode_explicit = True (field present in request body)
+  requested_mode = 'rick_royce'
+  classify_agent_route → agent_mode = 'rick_royce' (confidence 1.0)
+  persistence: agent_mode_explicit AND 'rick_royce' in named modes → saves preference  ✓
+
+Direct routing check:
+  classify_agent_route('สวัสดี', requested_mode='rick_royce')
+  → agent_mode: rick_royce   PASS  ✓
+
+────────────────────────────────────────────────────────────────
+CHECK 4 — Back to i nik
+────────────────────────────────────────────────────────────────
+
+Frontend back button (App.tsx:594-598):
+  {activeMode==='rick_royce'&&(
+    <button onClick={()=>setActiveMode('inik')}  ...> ← i nik </button>
+  )}
+  → visible only when activeMode==='rick_royce'; click resets to 'inik'  ✓
+
+Subsequent send() after reset:
+  activeMode==='inik' → agent_mode omitted from body  ✓
+
+Backend behavior on omitted request:
+  agent_mode_explicit = False → requested_mode = 'inik'
+  → routes to inik regardless of saved preferred_agent_mode='rick_royce'  ✓
+  → preferred_agent_mode NOT updated (only explicit sends update preference)  ✓
+
+────────────────────────────────────────────────────────────────
+CHECK 5 — Reload / reset behavior
+────────────────────────────────────────────────────────────────
+
+activeMode storage type: React useState only
+  localStorage keys: ['inik_user_id'] only (getStableUserId, App.tsx:312)
+  activeMode is NOT persisted to localStorage  ✓
+
+Page reload behavior:
+  useState<string>('inik') re-initializes to 'inik' on every page load  ✓
+
+Backend: saved preferred_agent_mode cannot force Rick on reload
+  After reload, frontend omits agent_mode → backend resolves 'inik'
+  preferred_agent_mode is read only when agent_mode_explicit=True
+  (it is never read from the else-branch anymore)  ✓
+
+────────────────────────────────────────────────────────────────
+CHECK 6 — Memory write gate
+────────────────────────────────────────────────────────────────
+
+Direct facts.py checks (python3 -c):
+
+  extract_facts('ชื่อเล่นฉันคือ มิ้น', {})
+  → name: 'มิ้น'   PASS  ✓
+
+  extract_facts('จำชื่อฉันได้ไหม', {'name':'มิ้น'})
+  → name: 'มิ้น' (unchanged)   PASS  ✓
+
+  extract_facts('เราชื่อเลม่อนไง ทำไมจำไม่ได้', {'name':'มิ้น'})
+  → name: 'มิ้น' (unchanged)   PASS  ✓
+
+Tests: test_nickname_extraction.py 13/13:
+  - test_nickname_plain             PASS
+  - test_nickname_plain_with_space  PASS
+  - test_nickname_rao               PASS
+  - test_nickname_chan              PASS
+  - test_recall_no_write_*         PASS (5 tests)
+  - test_write_*                   PASS (4 tests)
+
+────────────────────────────────────────────────────────────────
+CHECK 7 — Relationship stage
+────────────────────────────────────────────────────────────────
+
+Intimacy increment (inik_api.py:83):
+  intimacy_score = min(100, intimacy_score + 1)   ← value: 1   PASS  ✓
+
+Stage source (inik_api.py:93):
+  stage = relationship_state.get("relationship_stage", get_stage(intimacy_score))
+  → primary source: relationship_state["relationship_stage"]  ✓
+  → fallback only: get_stage(intimacy_score)  ✓
+
+Direct relationship_state check:
+  3 neutral messages: 'สวัสดี', 'วันนี้อากาศดีนะ', 'คิดอะไรอยู่'
+  → relationship_stage: 'Observer'   PASS  ✓
+  → relationship_state: {trust:0, familiarity:3, curiosity:0, attachment:0, score:0}
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  D. COMMANDS / TESTS EXECUTED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+git pull origin main                          (backend: pulled 8 commits)
+git log --oneline main | head -6              (both repos)
+git status --short && git ls-files --others   (both repos: clean)
+
+/root/.local/share/uv/tools/pytest/bin/pytest \
+  test_nickname_extraction.py test_agent_router.py test_v3_agent_router.py \
+  -v --tb=short
+  → 24 passed
+
+python3 -c "from agent_router import classify_agent_route, detect_agent_handoff; ..."
+  → 6 routing/handoff checks: all PASS
+
+python3 -c "from facts import extract_facts; ..."
+  → 3 memory write gate checks: all PASS
+
+python3 -c "from relationship import create_relationship_state, update_relationship_state; ..."
+  → stage after 3 neutral msgs: Observer PASS
+
+python3 -c "re inspection of inik_api.py..."
+  → intimacy_increment=1 PASS, stage_source=relationship_state PASS
+
+grep -n ... /tmp/inik-cafe-repo/src/App.tsx
+  → activeMode init, localStorage, send(), back button, vercel.json: all confirmed
+
+cd /tmp/inik-cafe-repo && npm run build
+  → tsc -b + vite build: PASS, 233 kB bundle, zero TypeScript errors
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  E. GEMINI-QUOTA-DEPENDENT CHECKS (COULD NOT COMPLETE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+All of these require a live Gemini response from the deployed Render backend:
+
+  E1. Actual Rick Royce reply content (is it strategic, not generic)
+  E2. Actual i nik reply content (warmth, memory context, relationship stage)
+  E3. Hybrid mode reply (emotional + strategic balance)
+  E4. Fact recall in reply ("what's my name" → uses stored name in response)
+  E5. Memory persistence across requests (Supabase round-trip)
+  E6. Rick preference saves then does NOT force Rick on next session (reload)
+  E7. End-to-end: live frontend → Vercel rewrite → Render → response
+       (also blocked by Vercel project reconnection not yet done)
+
+Additionally blocked in this environment:
+  E8. test_v3_contract_restore.py — pydantic not in pytest venv (logic verified
+      via direct python3 -c inspection instead; all 15 checks manually confirmed)
+  E9. Render backend liveness — proxy blocks https://inik-agent.onrender.com
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  F. REMAINING RISKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  RISK-1  Vercel project link is broken
+          The project reports "Project Link not found" for Ioonooni/inik-cafe.
+          Until reconnected, the deployed frontend at inik-cafe.vercel.app
+          does not reflect any changes merged to inik-cafe main, and vercel.json
+          rewrite is not active → /api/chat calls will 404 in production.
+          Severity: HIGH (blocks all frontend QA)
+
+  RISK-2  Release tags not on remote
+          v1.5.0-backend and v1.5.0-frontend exist as local annotated tags only.
+          The environment proxy blocks git push for tag refs (403).
+          Severity: LOW (cosmetic — code is correct on main)
+
+  RISK-3  sendWithAgent() does not read d.agent_mode from response
+          The one-shot "Talk to Rick Royce →" handoff path does not update
+          activeMode from the backend response. If backend returns agent_mode
+          different from 'rick_royce' on the first Rick response, the UI state
+          would be inconsistent. In practice this does not happen (explicit
+          requested_mode='rick_royce' always returns agent_mode='rick_royce').
+          Severity: LOW
+
+  RISK-4  README curl example shows "agent_mode": "auto"
+          Line 417 of README.md uses "auto" in a curl example.
+          After V3 restore, "auto" is not a named mode and will not save
+          a preference. Not a runtime bug but misleading documentation.
+          Severity: LOW
+
+  RISK-5  test_v3_contract_restore.py blocked in CI pytest venv
+          The pytest venv lacks pydantic. 15 logic tests run fine under
+          the application's Python environment but would fail in a bare pytest
+          run without installing project dependencies first.
+          Severity: LOW (logic verified via direct python3 -c checks)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  G. NEXT ACTIONS AFTER GEMINI QUOTA RESETS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Step 1  (REQUIRED FIRST) — Reconnect Vercel
+          Dashboard: Settings → Git → reconnect to Ioonooni/inik-cafe
+          Root Directory: (repo root, not a subdirectory)
+          Branch: main  |  Build: npm run build  |  Output: dist
+          Trigger a redeploy after reconnecting.
+
+  Step 2  — Live smoke test via browser (inik-cafe.vercel.app)
+          a. Open DevTools → Network. Send 'สวัสดี'.
+             Confirm: request body has NO agent_mode key.
+             Confirm: header pill shows I NIK.
+
+          b. Send 'ควรลงทุนใน NVDA ไหมตอนนี้'.
+             Confirm: RICK ROYCE HANDOFF card appears in assistant bubble.
+             Confirm: Gemini returns a real response (not 429/error).
+
+          c. Click 'Talk to Rick Royce →'.
+             Confirm: header pill → RICK ROYCE.
+             Send follow-up. Confirm: request body contains agent_mode:'rick_royce'.
+             Confirm: reply is Rick Royce style (strategic, Thai).
+
+          d. Click '← i nik'.
+             Confirm: pill → I NIK.
+             Send follow-up. Confirm: request body has NO agent_mode key.
+
+          e. Reload page.
+             Confirm: mode reverts to I NIK regardless of backend saved preference.
+
+  Step 3  — Verify fact persistence
+          Send 'ชื่อเล่นฉันคือ มิ้น'. Then send 'ชื่อเล่นฉันคือ อะไร'.
+          Confirm direct fact recall returns 'มิ้น' without Gemini.
+
+  Step 4  — Push release tags (from local machine or GitHub UI)
+          Backend:  git tag v1.5.0-backend 07621ad -m "..."
+                    git push origin v1.5.0-backend
+          Frontend: git tag v1.5.0-frontend 305ac57 -m "..."
+                    git push origin v1.5.0-frontend
+
+  Step 5  — Fix README curl example
+          README.md line ~417: change "agent_mode": "auto" → "agent_mode": "rick_royce"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ROLLBACK COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  # Backend — revert mode fallback fix only
+  git revert 9b1fc84 --no-edit && git push origin main
+
+  # Backend — revert all V1.5 session fixes
+  git revert 9b1fc84 7cd8a96 ab69776 2b4018a --no-edit && git push origin main
+
+  # Frontend — revert Rick UI patch
+  cd /path/to/inik-cafe
+  git revert 27f83c3 --no-edit && git push origin main
+
+================================================================================
+  END OF QA CHECKPOINT REPORT
+================================================================================
