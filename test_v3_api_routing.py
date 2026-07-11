@@ -1,4 +1,7 @@
+import pytest
 from fastapi.testclient import TestClient
+
+import inik_api
 from inik_api import app
 
 client = TestClient(app)
@@ -23,7 +26,12 @@ cases = [
     ),
 ]
 
-for name, message, expected in cases:
+
+@pytest.mark.parametrize("name,message,expected", cases)
+def test_api_routing(monkeypatch, name, message, expected):
+    monkeypatch.setattr(inik_api, "model", None)
+    monkeypatch.setattr(inik_api, "API_KEY", None)
+
     response = client.post(
         "/api/chat",
         json={
@@ -43,5 +51,3 @@ for name, message, expected in cases:
     assert actual == expected, (
         f"{name}: expected {expected}, got {actual}"
     )
-
-print("api routing ok")

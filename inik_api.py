@@ -143,7 +143,7 @@ def chat(req: ChatRequest):
             },
         )
     except Exception as error:
-        print(f"[memory_v2] save failed: {error}")
+        print(f"[memory_v2] save failed: {type(error).__name__}")
 
     if agent_mode == "rick_royce":
         prompt = build_rick_prompt(

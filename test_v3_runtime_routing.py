@@ -1,7 +1,7 @@
 from agent_router import classify_agent_route
 
 
-def run():
+def test_runtime_routing():
     tests = [
         ("วันนี้เหนื่อยมาก อยากระบาย", "inik"),
         ("ควรซื้อหุ้น ASML ไหม", "rick_royce"),
@@ -14,9 +14,3 @@ def run():
         assert result.agent_mode == expected, (
             f"{msg} -> {result.agent_mode} != {expected}"
         )
-
-    print("runtime routing ok")
-
-
-if __name__ == "__main__":
-    run()
