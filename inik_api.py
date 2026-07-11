@@ -98,8 +98,6 @@ def chat(req: ChatRequest):
     response_mode = detect_response_mode(user_message)
     response_mode_description = describe_response_mode(response_mode)
 
-    chat_history = build_chat_history(recent_messages, limit=10)
-
     rag_context = build_safe_rag_context(
         user_id=user_id,
         user_message=user_message,
@@ -127,6 +125,8 @@ def chat(req: ChatRequest):
     # or "auto" — that would silently overwrite the user's saved preference.
     if agent_mode_explicit and req.agent_mode.strip().lower() in ("inik", "rick_royce", "hybrid"):
         user_profile["preferred_agent_mode"] = agent_mode
+
+    chat_history = build_chat_history(recent_messages, limit=10, active_agent_mode=agent_mode)
 
     handoff_suggestion = detect_agent_handoff(user_message)
 
@@ -227,7 +227,7 @@ def chat(req: ChatRequest):
         except Exception as error:
             reply = f"สัญญาณจากจักรวาลสะดุด: {error}"
 
-    recent_messages.append({"role": "assistant", "content": reply})
+    recent_messages.append({"role": "assistant", "content": reply, "agent_mode": agent_mode})
     recent_messages = recent_messages[-20:]
     user_profile["recent_messages"] = recent_messages
 
